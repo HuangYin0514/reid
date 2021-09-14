@@ -19,7 +19,8 @@ import matplotlib.pyplot as plt
 
 from models import *
 
-from loss import CrossEntropyLabelSmoothLoss,TripletLoss
+from loss import CrossEntropyLabelSmoothLoss, TripletLoss
+from triplet_sampler import RandomIdentitySampler
 
 version = torch.__version__
 
@@ -48,10 +49,10 @@ opt = parser.parse_args()
 # util.print_options(opt)
 
 
-train_all = '_all'
+train_all = "_all"
 data_dir = opt.data_dir
-img_height= opt.img_height
-img_width=opt.img_width
+img_height = opt.img_height
+img_width = opt.img_width
 # speed up compution
 torch.backends.cudnn.benchmark = True
 # device
@@ -68,9 +69,7 @@ transform_train_list = [
 ]
 
 transform_val_list = [
-    transforms.Resize(
-        size=(img_height, img_width), interpolation=3
-    ),  # Image.BICUBIC
+    transforms.Resize(size=(img_height, img_width), interpolation=3),  # Image.BICUBIC
     transforms.ToTensor(),
     transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
 ]
@@ -94,134 +93,160 @@ dataloaders = {
     x: torch.utils.data.DataLoader(
         image_datasets[x],
         batch_size=opt.batch_size,
-        shuffle=True,
+        # shuffle=True,
         num_workers=2,
         pin_memory=True,
+        sampler=RandomIdentitySampler(image_datasets["train"], opt.batch_size, num_instances=2),
     )  # 8 workers may work faster
     for x in ["train"]
 }
 
-dataset_sizes = {x: len(image_datasets[x]) for x in ['train']}
-class_names = image_datasets['train'].classes
+dataset_sizes = {x: len(image_datasets[x]) for x in ["train"]}
+class_names = image_datasets["train"].classes
 
 
-y_loss = {} # loss history
-y_loss['train'] = []
-y_loss['val'] = []
+y_loss = {}  # loss history
+y_loss["train"] = []
+y_loss["val"] = []
 y_err = {}
-y_err['train'] = []
-y_err['val'] = []
-def train_model(model, criterion, optimizer, scheduler, num_epochs=25):
+y_err["train"] = []
+y_err["val"] = []
+
+
+def train_model(model, optimizer, scheduler, num_epochs=25):
     since = time.time()
 
-    #best_model_wts = model.state_dict()
-    #best_acc = 0.0
-    warm_up = 0.1 # We start from the 0.1*lrRate
-    warm_iteration = round(dataset_sizes['train']/opt.batch_size) # first 5 epoch
+    # best_model_wts = model.state_dict()
+    # best_acc = 0.0
+    warm_up = 0.1  # We start from the 0.1*lrRate
+    warm_iteration = round(dataset_sizes["train"] / opt.batch_size)  # first 5 epoch
     for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
-        print('-' * 10)
-        
+        print("Epoch {}/{}".format(epoch, num_epochs - 1))
+        print("-" * 10)
+
         # Each epoch has a training and validation phase
-        for phase in ['train']:
+        for phase in ["train"]:
             # model.train(True)  # Set model to training mode
-           
+
             running_loss = 0.0
             running_corrects = 0.0
             # Iterate over data.
             for data in dataloaders[phase]:
                 # get the inputs
+                inputs, labels = data
                 inputs, labels = inputs.to(device), labels.to(device)
-                now_batch_size,c,h,w = inputs.shape
+                now_batch_size, c, h, w = inputs.shape
 
                 # zero the parameter gradients
                 optimizer.zero_grad()
 
-                outputs = model(inputs)
+                parts_scores, gloab_features, fusion_feature = model(inputs)
 
-                sm = nn.Softmax(dim=1)
-                part = {}
-                num_part = 6
-                for i in range(num_part):
-                    part[i] = outputs[i]
+                # parts loss-------------------------------------------------
+                part_loss = 0
+                score = 0
+                for logits in parts_scores:
+                    score += logits
+                    stripe_loss = ce_labelsmooth_loss(logits, labels)
+                    part_loss += stripe_loss
 
-                score = sm(part[0]) + sm(part[1]) +sm(part[2]) + sm(part[3]) +sm(part[4]) +sm(part[5])
                 _, preds = torch.max(score.data, 1)
 
-                loss = criterion(part[0], labels)
+                # gloab loss-------------------------------------------------
+                gloab_loss = triplet_loss(gloab_features, labels)
 
-                for i in range(num_part-1):
-                    loss += criterion(part[i+1], labels)
-                
+                # fusion loss-------------------------------------------------
+                fusion_loss = triplet_loss(fusion_feature, labels)
+
+                # all of loss -------------------------------------------------
+                loss_param1 = 0.1
+                loss_param2 = 0
+                loss = (
+                    part_loss
+                    + loss_param1 * gloab_loss[0]
+                    + loss_param2 * fusion_loss[0]
+                )
+
                 del inputs
 
                 loss.backward()
                 optimizer.step()
 
-                 # statistics
-                if int(version[0])>0 or int(version[2]) > 3: # for the new version like 0.4.0, 0.5.0 and 1.0.0
+                # statistics
+                if (
+                    int(version[0]) > 0 or int(version[2]) > 3
+                ):  # for the new version like 0.4.0, 0.5.0 and 1.0.0
                     running_loss += loss.item() * now_batch_size
-                else :  # for the old version like 0.3.0 and 0.3.1
+                else:  # for the old version like 0.3.0 and 0.3.1
                     running_loss += loss.data[0] * now_batch_size
                 del loss
                 running_corrects += float(torch.sum(preds == labels.data))
 
                 epoch_loss = running_loss / dataset_sizes[phase]
                 epoch_acc = running_corrects / dataset_sizes[phase]
-                
-                print('{} Loss: {:.4f} Acc: {:.4f}'.format(
-                    phase, epoch_loss, epoch_acc))
-                
+
+                print(
+                    "{} Loss: {:.4f} Acc: {:.4f}".format(phase, epoch_loss, epoch_acc)
+                )
+
                 y_loss[phase].append(epoch_loss)
-                y_err[phase].append(1.0-epoch_acc)   
+                y_err[phase].append(1.0 - epoch_acc)
             time_elapsed = time.time() - since
-            print('Training complete in {:.0f}m {:.0f}s'.format(
-                time_elapsed // 60, time_elapsed % 60))
-            print()    
+            print(
+                "Training complete in {:.0f}m {:.0f}s".format(
+                    time_elapsed // 60, time_elapsed % 60
+                )
+            )
+            print()
         time_elapsed = time.time() - since
-        print('Training complete in {:.0f}m {:.0f}s'.format(
-            time_elapsed // 60, time_elapsed % 60))
-        #print('Best val Acc: {:4f}'.format(best_acc))
+        print(
+            "Training complete in {:.0f}m {:.0f}s".format(
+                time_elapsed // 60, time_elapsed % 60
+            )
+        )
+        # print('Best val Acc: {:4f}'.format(best_acc))
 
         # # load best model weights
         # model.load_state_dict(last_model_wts)
         # save_network(model, 'last')
         return model
 
+
 ######################################################################
 # Draw Curve
-#---------------------------
+# ---------------------------
 x_epoch = []
 fig = plt.figure()
 ax0 = fig.add_subplot(121, title="loss")
 ax1 = fig.add_subplot(122, title="top1err")
+
+
 def draw_curve(current_epoch):
     x_epoch.append(current_epoch)
-    ax0.plot(x_epoch, y_loss['train'], 'bo-', label='train')
-    ax0.plot(x_epoch, y_loss['val'], 'ro-', label='val')
-    ax1.plot(x_epoch, y_err['train'], 'bo-', label='train')
-    ax1.plot(x_epoch, y_err['val'], 'ro-', label='val')
+    ax0.plot(x_epoch, y_loss["train"], "bo-", label="train")
+    ax0.plot(x_epoch, y_loss["val"], "ro-", label="val")
+    ax1.plot(x_epoch, y_err["train"], "bo-", label="train")
+    ax1.plot(x_epoch, y_err["val"], "ro-", label="val")
     if current_epoch == 0:
         ax0.legend()
         ax1.legend()
-    fig.savefig( os.path.join('./model',name,'train.jpg'))
+    fig.savefig(os.path.join("./model", name, "train.jpg"))
+
 
 ######################################################################
 # Save model
-#---------------------------
+# ---------------------------
 def save_network(network, epoch_label):
-    save_filename = 'net_%s.pth'% epoch_label
-    save_path = os.path.join('./model',name,save_filename)
+    save_filename = "net_%s.pth" % epoch_label
+    save_path = os.path.join("./model", name, save_filename)
     torch.save(network.cpu().state_dict(), save_path)
     if torch.cuda.is_available():
         network.cuda()
 
 
-
 # model ============================================================================================================
 model = Resnet_pcb_3branch(len(class_names))
 model = model.to(device)
-
 
 
 # criterion ============================================================================================================
@@ -245,5 +270,5 @@ optimizer = torch.optim.SGD(
 # # scheduler ============================================================================================================
 scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
-# if __name__ == '__main__':
-#     train_model(None,None,None,None)
+if __name__ == "__main__":
+    model = train_model(model, optimizer, scheduler, num_epochs=opt.num_epochs)
