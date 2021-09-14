@@ -6,8 +6,7 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as transforms
-from torchvision import datasets
+import torchvision.transforms as T
 
 from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
 from loss.TripleLoss import TripletLoss
@@ -24,7 +23,7 @@ parser.add_argument("--checkpoints_dir", type=str, default="./checkpoints")
 parser.add_argument("--name", type=str, default="person_reid")
 # data
 parser.add_argument(
-    "--data_dir", type=str, default="datasets/Market-1501-v15.09.15/pytorch"
+    "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15_reduce"
 )
 # parser.add_argument(
 #     "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15"
@@ -72,58 +71,74 @@ logger = logger.Logger(save_dir_path)
 curve = draw_curve.Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
-transform_train_list = [
-    transforms.Resize((opt.img_height, opt.img_width), interpolation=3),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-]
-
-transform_val_list = [
-    transforms.Resize(
-        size=(opt.img_height, opt.img_width), interpolation=3
-    ),  # Image.BICUBIC
-    transforms.ToTensor(),
-    transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
-]
-
-data_transforms = {
-    "train": transforms.Compose(transform_train_list),
-    "val": transforms.Compose(transform_val_list),
-}
-
-image_datasets = {}
-train_all = "_all"
-image_datasets["train"] = datasets.ImageFolder(
-    os.path.join(opt.data_dir, "train" + train_all), data_transforms["train"]
+# data Augumentation
+train_transforms = T.Compose(
+    [
+        T.Resize((opt.img_height, opt.img_width), interpolation=3),
+        T.RandomHorizontalFlip(),
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
 )
 
+test_transforms = T.Compose(
+    [
+        T.Resize((opt.img_height, opt.img_width), interpolation=3),
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
-dataloaders = {
-    x: torch.utils.data.DataLoader(
-        image_datasets[x],
-        batch_size=opt.batch_size,
-        # shuffle=True,
-        num_workers=2,
-        pin_memory=True,
-        sampler=RandomIdentitySampler(
-            image_datasets["train"], opt.batch_size, num_instances=2
-        ),
-    )  # 8 workers may work faster
-    for x in ["train"]
-}
+# data loader
+train_dataset = Market1501(
+    root=opt.data_dir,
+    data_folder="bounding_box_train",
+    transform=train_transforms,
+    relabel=True,
+)
 
-dataset_sizes = {x: len(image_datasets[x]) for x in ["train"]}
-class_names = image_datasets["train"].classes
+num_classes = train_dataset.num_pids
 
+query_dataset = Market1501(
+    root=opt.data_dir, data_folder="query", transform=test_transforms, relabel=False
+)
+gallery_dataset = Market1501(
+    root=opt.data_dir,
+    data_folder="bounding_box_test",
+    transform=test_transforms,
+    relabel=False,
+)
+
+train_loader = torch.utils.data.DataLoader(
+    train_dataset,
+    sampler=RandomIdentitySampler(train_dataset.dataset, opt.batch_size, num_instances=2),
+    batch_size=opt.batch_size,
+    num_workers=opt.num_workers,
+    collate_fn=train_collate_fn,
+)
+
+query_loader = torch.utils.data.DataLoader(
+    query_dataset,
+    batch_size=opt.test_batch_size,
+    shuffle=False,
+    num_workers=opt.num_workers,
+    collate_fn=val_collate_fn,
+)
+gallery_loader = torch.utils.data.DataLoader(
+    gallery_dataset,
+    batch_size=opt.test_batch_size,
+    shuffle=False,
+    num_workers=opt.num_workers,
+    collate_fn=val_collate_fn,
+)
 
 # model ============================================================================================================
-model = Resnet_pcb_3branch(len(class_names))
+model = Resnet_pcb_3branch(num_classes)
 model = model.to(device)
 
 # criterion ============================================================================================================
 criterion = F.cross_entropy
-ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=len(class_names))
+ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
 triplet_loss = TripletLoss(margin=0.3)
 
 # optimizer ============================================================================================================
@@ -153,7 +168,7 @@ def train():
 
         running_loss = 0.0
 
-        for inputs, labels in  dataloaders["train"]:
+        for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             # net ---------------------
             optimizer.zero_grad()
@@ -188,7 +203,7 @@ def train():
 
         # print train infomation
         if epoch % 1 == 0:
-            epoch_loss = running_loss / len(dataloaders["train"])
+            epoch_loss = running_loss / len(train_loader.dataset)
             time_remaining = (
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
             )
@@ -207,19 +222,19 @@ def train():
             curve.x_epoch_loss.append(epoch + 1)
             curve.y_train_loss.append(epoch_loss)
 
-        # # test
-        # if epoch % 1 == 0:
-        #     # test current datset-------------------------------------
-        #     torch.cuda.empty_cache()
-        #     CMC, mAP = test(epoch)
-        #     logger.info(
-        #         "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-        #         % (CMC[0], CMC[4], CMC[9], mAP)
-        #     )
+        # test
+        if epoch % 1 == 0:
+            # test current datset-------------------------------------
+            torch.cuda.empty_cache()
+            CMC, mAP = test(epoch)
+            logger.info(
+                "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+                % (CMC[0], CMC[4], CMC[9], mAP)
+            )
 
-        #     curve.x_epoch_test.append(epoch + 1)
-        #     curve.y_test["top1"].append(CMC[0])
-        #     curve.y_test["mAP"].append(mAP)
+            curve.x_epoch_test.append(epoch + 1)
+            curve.y_test["top1"].append(CMC[0])
+            curve.y_test["mAP"].append(mAP)
 
     # Save the loss curve
     curve.save_curve()
@@ -229,74 +244,74 @@ def train():
     print("training is done !")
 
 
-# @torch.no_grad()
-# def test(epoch, normalize_feature=True, dist_metric="cosine"):
-#     model.eval()
+@torch.no_grad()
+def test(epoch, normalize_feature=True, dist_metric="cosine"):
+    model.eval()
 
-#     # Extracting features from query set------------------------------------------------------------
-#     print("Extracting features from query set ...")
-#     qf, q_pids, q_camids = (
-#         [],
-#         [],
-#         [],
-#     )  # query features, query person IDs and query camera IDs
-#     for _, data in enumerate(query_loader):
-#         imgs, pids, camids = reid_util._parse_data_for_eval(data)
-#         imgs = imgs.to(device)
-#         features = reid_util._extract_features(model, imgs)
-#         qf.append(features)
-#         q_pids.extend(pids)
-#         q_camids.extend(camids)
-#     qf = torch.cat(qf, 0)
-#     q_pids = np.asarray(q_pids)
-#     q_camids = np.asarray(q_camids)
-#     print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
+    # Extracting features from query set------------------------------------------------------------
+    print("Extracting features from query set ...")
+    qf, q_pids, q_camids = (
+        [],
+        [],
+        [],
+    )  # query features, query person IDs and query camera IDs
+    for _, data in enumerate(query_loader):
+        imgs, pids, camids = reid_util._parse_data_for_eval(data)
+        imgs = imgs.to(device)
+        features = reid_util._extract_features(model, imgs)
+        qf.append(features)
+        q_pids.extend(pids)
+        q_camids.extend(camids)
+    qf = torch.cat(qf, 0)
+    q_pids = np.asarray(q_pids)
+    q_camids = np.asarray(q_camids)
+    print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
-#     # Extracting features from gallery set------------------------------------------------------------
-#     print("Extracting features from gallery set ...")
-#     gf, g_pids, g_camids = (
-#         [],
-#         [],
-#         [],
-#     )  # gallery features, gallery person IDs and gallery camera IDs
-#     for _, data in enumerate(gallery_loader):
-#         imgs, pids, camids = reid_util._parse_data_for_eval(data)
-#         imgs = imgs.to(device)
-#         features = reid_util._extract_features(model, imgs)
-#         gf.append(features)
-#         g_pids.extend(pids)
-#         g_camids.extend(camids)
-#     gf = torch.cat(gf, 0)
-#     g_pids = np.asarray(g_pids)
-#     g_camids = np.asarray(g_camids)
-#     print("Done, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
+    # Extracting features from gallery set------------------------------------------------------------
+    print("Extracting features from gallery set ...")
+    gf, g_pids, g_camids = (
+        [],
+        [],
+        [],
+    )  # gallery features, gallery person IDs and gallery camera IDs
+    for _, data in enumerate(gallery_loader):
+        imgs, pids, camids = reid_util._parse_data_for_eval(data)
+        imgs = imgs.to(device)
+        features = reid_util._extract_features(model, imgs)
+        gf.append(features)
+        g_pids.extend(pids)
+        g_camids.extend(camids)
+    gf = torch.cat(gf, 0)
+    g_pids = np.asarray(g_pids)
+    g_camids = np.asarray(g_camids)
+    print("Done, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
 
-#     # normalize_feature------------------------------------------------------------------------------
-#     if normalize_feature:
-#         print("Normalzing features with L2 norm ...")
-#         qf = F.normalize(qf, p=2, dim=1)
-#         gf = F.normalize(gf, p=2, dim=1)
+    # normalize_feature------------------------------------------------------------------------------
+    if normalize_feature:
+        print("Normalzing features with L2 norm ...")
+        qf = F.normalize(qf, p=2, dim=1)
+        gf = F.normalize(gf, p=2, dim=1)
 
-#     # Computing distance matrix------------------------------------------------------------------------
-#     print("Computing distance matrix with metric={} ...".format(dist_metric))
-#     qf = np.array(qf.cpu())
-#     gf = np.array(gf.cpu())
-#     dist = reid_util.cosine_dist(qf, gf)
-#     rank_results = np.argsort(dist)[:, ::-1]
+    # Computing distance matrix------------------------------------------------------------------------
+    print("Computing distance matrix with metric={} ...".format(dist_metric))
+    qf = np.array(qf.cpu())
+    gf = np.array(gf.cpu())
+    dist = reid_util.cosine_dist(qf, gf)
+    rank_results = np.argsort(dist)[:, ::-1]
 
-#     # Computing CMC and mAP------------------------------------------------------------------------
-#     print("Computing CMC and mAP ...")
-#     APs, CMC = [], []
-#     for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
-#         a_rank, query_camid, query_pid = data
-#         ap, cmc = reid_util.compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
-#         APs.append(ap), CMC.append(cmc)
-#     MAP = np.array(APs).mean()
-#     min_len = min([len(cmc) for cmc in CMC])
-#     CMC = [cmc[:min_len] for cmc in CMC]
-#     CMC = np.mean(np.array(CMC), axis=0)
+    # Computing CMC and mAP------------------------------------------------------------------------
+    print("Computing CMC and mAP ...")
+    APs, CMC = [], []
+    for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
+        a_rank, query_camid, query_pid = data
+        ap, cmc = reid_util.compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
+        APs.append(ap), CMC.append(cmc)
+    MAP = np.array(APs).mean()
+    min_len = min([len(cmc) for cmc in CMC])
+    CMC = [cmc[:min_len] for cmc in CMC]
+    CMC = np.mean(np.array(CMC), axis=0)
 
-#     return CMC, MAP
+    return CMC, MAP
 
 
 if __name__ == "__main__":
