@@ -1,12 +1,21 @@
 import os
 from shutil import copyfile
+import argparse
 
 ######################################################################
 # Prepare dataset for training
 # You only need to change this line to your dataset download path
 # --------------------------------------------------------------------
 
-download_path = 'datasets/Market-1501-v15.09.15'
+# opt ==============================================================================
+parser = argparse.ArgumentParser(description="Base Dl")
+# base (env setting)
+parser.add_argument("--download_path", type=str, default="./datasets/Market-1501-v15.09.15")
+opt = parser.parse_args()
+# util.print_options(opt)
+
+
+download_path = opt.download_path
 
 if 'cuhk' in download_path:
     suffix = 'png'
