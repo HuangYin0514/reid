@@ -11,7 +11,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Base Dl")
 # base (env setting)
 parser.add_argument("--download_path", type=str, default="./datasets/Market-1501-v15.09.15")
-parser.add_argument("--save_path", type=str, default="./datasets/Market-1501-v15.09.15")
+parser.add_argument("--dataset_save_path", type=str, default="./datasets/Market-1501-v15.09.15")
 
 opt = parser.parse_args()
 # util.print_options(opt)
@@ -27,14 +27,15 @@ else:
 if not os.path.isdir(download_path):
     print('please change the download_path')
 
-save_path = download_path + '/pytorch'
+dataset_save_path = opt.dataset_save_path
+save_path = dataset_save_path + '/pytorch'
 if not os.path.isdir(save_path):
     os.mkdir(save_path)
 
 # -----------------------------------------
 # query
 query_path = download_path + '/query'
-query_save_path = download_path + '/pytorch/query'
+query_save_path = dataset_save_path + '/pytorch/query'
 if not os.path.isdir(query_save_path):
     os.mkdir(query_save_path)
 
@@ -53,7 +54,7 @@ for root, dirs, files in os.walk(query_path, topdown=True):
 
 # gallery
 gallery_path = download_path + '/bounding_box_test'
-gallery_save_path = download_path + '/pytorch/gallery'
+gallery_save_path = dataset_save_path + '/pytorch/gallery'
 if not os.path.isdir(gallery_save_path):
     os.mkdir(gallery_save_path)
 
@@ -71,7 +72,7 @@ for root, dirs, files in os.walk(gallery_path, topdown=True):
 # ---------------------------------------
 # train_all
 train_path = download_path + '/bounding_box_train'
-train_save_path = download_path + '/pytorch/train_all'
+train_save_path = dataset_save_path + '/pytorch/train_all'
 if not os.path.isdir(train_save_path):
     os.mkdir(train_save_path)
 
