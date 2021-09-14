@@ -11,6 +11,8 @@ import argparse
 parser = argparse.ArgumentParser(description="Base Dl")
 # base (env setting)
 parser.add_argument("--download_path", type=str, default="./datasets/Market-1501-v15.09.15")
+parser.add_argument("--save_path", type=str, default="./datasets/Market-1501-v15.09.15")
+
 opt = parser.parse_args()
 # util.print_options(opt)
 
