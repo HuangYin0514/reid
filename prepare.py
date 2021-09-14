@@ -28,9 +28,13 @@ if not os.path.isdir(download_path):
     print('please change the download_path')
 
 dataset_save_path = opt.dataset_save_path
+if not os.path.isdir(dataset_save_path):
+    os.mkdir(dataset_save_path)
+    
 save_path = dataset_save_path + '/pytorch'
 if not os.path.isdir(save_path):
     os.mkdir(save_path)
+
 
 # -----------------------------------------
 # query
