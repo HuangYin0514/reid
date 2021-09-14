@@ -30,7 +30,7 @@ if not os.path.isdir(download_path):
 dataset_save_path = opt.dataset_save_path
 if not os.path.isdir(dataset_save_path):
     os.mkdir(dataset_save_path)
-    
+
 save_path = dataset_save_path + '/pytorch'
 if not os.path.isdir(save_path):
     os.mkdir(save_path)
@@ -107,7 +107,6 @@ def copyfolder(src, dst):
         os.mkdir(dst)
     for tt in files:
         copyfile(src + '/' + tt, dst + '/' + tt)
-
 
 train_save_path = original_path + '/train_all_new'
 data_path = original_path + '/train_all'

@@ -173,43 +173,38 @@ def train_model(model, optimizer, scheduler, num_epochs=25):
                 optimizer.step()
 
                 # statistics
-                if (
-                    int(version[0]) > 0 or int(version[2]) > 3
-                ):  # for the new version like 0.4.0, 0.5.0 and 1.0.0
-                    running_loss += loss.item() * now_batch_size
-                else:  # for the old version like 0.3.0 and 0.3.1
-                    running_loss += loss.data[0] * now_batch_size
+                running_loss += loss.data[0] * now_batch_size
                 del loss
                 running_corrects += float(torch.sum(preds == labels.data))
 
-                epoch_loss = running_loss / dataset_sizes[phase]
-                epoch_acc = running_corrects / dataset_sizes[phase]
+            epoch_loss = running_loss / dataset_sizes[phase]
+            epoch_acc = running_corrects / dataset_sizes[phase]
 
-                print(
-                    "{} Loss: {:.4f} Acc: {:.4f}".format(phase, epoch_loss, epoch_acc)
-                )
-
-                y_loss[phase].append(epoch_loss)
-                y_err[phase].append(1.0 - epoch_acc)
-            time_elapsed = time.time() - since
             print(
-                "Training complete in {:.0f}m {:.0f}s".format(
-                    time_elapsed // 60, time_elapsed % 60
-                )
+                "{} Loss: {:.4f} Acc: {:.4f}".format(phase, epoch_loss, epoch_acc)
             )
-            print()
+
+            y_loss[phase].append(epoch_loss)
+            y_err[phase].append(1.0 - epoch_acc)
         time_elapsed = time.time() - since
         print(
             "Training complete in {:.0f}m {:.0f}s".format(
                 time_elapsed // 60, time_elapsed % 60
             )
         )
-        # print('Best val Acc: {:4f}'.format(best_acc))
+        print()
+    time_elapsed = time.time() - since
+    print(
+        "Training complete in {:.0f}m {:.0f}s".format(
+            time_elapsed // 60, time_elapsed % 60
+        )
+    )
+    # print('Best val Acc: {:4f}'.format(best_acc))
 
-        # # load best model weights
-        # model.load_state_dict(last_model_wts)
-        # save_network(model, 'last')
-        return model
+    # # load best model weights
+    # model.load_state_dict(last_model_wts)
+    # save_network(model, 'last')
+    return model
 
 
 ######################################################################
