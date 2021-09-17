@@ -189,7 +189,7 @@ def train():
 
             # all of loss -------------------------------------------------
             loss_param1 = 0.15
-            loss_param2 = 0.0015
+            loss_param2 = 0
             loss = part_loss + loss_param1*gloab_loss[0] + loss_param2*fusion_loss[0]
 
             loss.backward()
