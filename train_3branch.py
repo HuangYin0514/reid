@@ -50,7 +50,7 @@ util.print_options(opt)
 
 # env setting ==============================================================================
 # Fix random seed
-random_seed = 2021
+random_seed = 1
 torch.manual_seed(random_seed)
 torch.cuda.manual_seed_all(random_seed)
 torch.cuda.manual_seed(random_seed)
@@ -188,7 +188,7 @@ def train():
             fusion_loss = triplet_loss(fusion_feature, labels)
 
             # all of loss -------------------------------------------------
-            loss_param1 = 0.15
+            loss_param1 = 0.015
             loss_param2 = 0
             loss = part_loss + loss_param1*gloab_loss[0] + loss_param2*fusion_loss[0]
 
