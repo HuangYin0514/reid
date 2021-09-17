@@ -188,8 +188,8 @@ def train():
             fusion_loss = triplet_loss(fusion_feature, labels)
 
             # all of loss -------------------------------------------------
-            loss_param1 = 0.015
-            loss_param2 = 0
+            loss_param1 = 0.1
+            loss_param2 = 0.005
             loss = part_loss + loss_param1*gloab_loss[0] + loss_param2*fusion_loss[0]
 
             loss.backward()
