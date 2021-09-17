@@ -208,15 +208,15 @@ def train():
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
             )
 
-            logger.info(
-                "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
-                    epoch + 1,
-                    opt.num_epochs,
-                    epoch_loss,
-                    time_remaining // 3600,
-                    time_remaining / 60 % 60,
-                )
-            )
+            # logger.info(
+            #     "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
+            #         epoch + 1,
+            #         opt.num_epochs,
+            #         epoch_loss,
+            #         time_remaining // 3600,
+            #         time_remaining / 60 % 60,
+            #     )
+            # )
 
             # plot curve
             curve.x_epoch_loss.append(epoch + 1)
@@ -227,10 +227,10 @@ def train():
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)
-            logger.info(
-                "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-                % (CMC[0], CMC[4], CMC[9], mAP)
-            )
+            # logger.info(
+            #     "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+            #     % (CMC[0], CMC[4], CMC[9], mAP)
+            # )
 
             curve.x_epoch_test.append(epoch + 1)
             curve.y_test["top1"].append(CMC[0])
@@ -249,7 +249,7 @@ def test(epoch, normalize_feature=True, dist_metric="cosine"):
     model.eval()
 
     # Extracting features from query set------------------------------------------------------------
-    print("Extracting features from query set ...")
+    # print("Extracting features from query set ...")
     qf, q_pids, q_camids = (
         [],
         [],
@@ -265,10 +265,10 @@ def test(epoch, normalize_feature=True, dist_metric="cosine"):
     qf = torch.cat(qf, 0)
     q_pids = np.asarray(q_pids)
     q_camids = np.asarray(q_camids)
-    print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
+    # print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
     # Extracting features from gallery set------------------------------------------------------------
-    print("Extracting features from gallery set ...")
+    # print("Extracting features from gallery set ...")
     gf, g_pids, g_camids = (
         [],
         [],
@@ -284,23 +284,23 @@ def test(epoch, normalize_feature=True, dist_metric="cosine"):
     gf = torch.cat(gf, 0)
     g_pids = np.asarray(g_pids)
     g_camids = np.asarray(g_camids)
-    print("Done, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
+    # print("Done, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
 
     # normalize_feature------------------------------------------------------------------------------
     if normalize_feature:
-        print("Normalzing features with L2 norm ...")
+        # print("Normalzing features with L2 norm ...")
         qf = F.normalize(qf, p=2, dim=1)
         gf = F.normalize(gf, p=2, dim=1)
 
     # Computing distance matrix------------------------------------------------------------------------
-    print("Computing distance matrix with metric={} ...".format(dist_metric))
+    # print("Computing distance matrix with metric={} ...".format(dist_metric))
     qf = np.array(qf.cpu())
     gf = np.array(gf.cpu())
     dist = reid_util.cosine_dist(qf, gf)
     rank_results = np.argsort(dist)[:, ::-1]
 
     # Computing CMC and mAP------------------------------------------------------------------------
-    print("Computing CMC and mAP ...")
+    # print("Computing CMC and mAP ...")
     APs, CMC = [], []
     for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
         a_rank, query_camid, query_pid = data
