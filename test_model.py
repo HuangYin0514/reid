@@ -16,9 +16,10 @@
 import torch
 import torch.nn as nn
 
+x = torch.rand(6, 20, 256)
+net = nn.LSTM(256, 256, bidirectional=True)
 
-x=torch.rand(2,5,3)    # 序列长度为5，输入尺度为3
-net=nn.LSTM(3,4,6,bidirectional=False,batch_first=True)
+output, (h0, c0) = net(x)
+print(output.shape)
 
-output, (h0,c0)= net(x)
-print(output)
+

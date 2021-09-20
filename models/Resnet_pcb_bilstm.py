@@ -251,47 +251,15 @@ class Resnet_Backbone(nn.Module):
         return x
 
 
-class Feature_Fusion_Module(nn.Module):
-    # 自定义特征融合模块
-    def __init__(self, parts):
-        super(Feature_Fusion_Module, self).__init__()
-
-        self.parts = parts
-
-        self.fc1 = nn.Linear(256, 6)
-        self.fc1.apply(weights_init_kaiming)
-
-    def forward(self, gloab_feature, parts_features):
-        batch_size = gloab_feature.size(0)
-
-        ########################################################################################################
-        # compute the weigth of parts features --------------------------------------------------
-        w_of_parts = torch.sigmoid(self.fc1(gloab_feature))
-
-        ########################################################################################################
-        # compute the features,with weigth --------------------------------------------------
-        weighted_feature = torch.zeros_like(parts_features[0])
-        for i in range(self.parts):
-            new_feature = parts_features[i] * w_of_parts[:, i].view(
-                batch_size, 1, 1
-            ).expand(parts_features[i].shape)
-            weighted_feature += new_feature
-
-        return weighted_feature.squeeze()
-
-
-class Resnet_pcb_3branch(nn.Module):
+class Resnet_pcb_bilstm(nn.Module):
     def __init__(self, num_classes):
 
         self.parts = 6
 
-        super(Resnet_pcb_3branch, self).__init__()
+        super(Resnet_pcb_bilstm, self).__init__()
 
         # backbone
         self.backbone = Resnet_Backbone()
-
-        # feature fusion module--------------------------------------------------------------------------
-        self.ffm = Feature_Fusion_Module(self.parts)
 
         # part(pcb）--------------------------------------------------------------------------
         self.avgpool = nn.AdaptiveAvgPool2d((self.parts, 1))
@@ -304,23 +272,21 @@ class Resnet_pcb_3branch(nn.Module):
             )
             self.local_conv_list.append(local_conv)
 
-        # gloab--------------------------------------------------------------------------
-        self.k11_conv = nn.Conv2d(2048, 512, kernel_size=1)
-        self.gloab_agp = nn.AdaptiveAvgPool2d((1, 1))
-        self.gloab_conv = nn.Sequential(
-            nn.Conv1d(512, 256, kernel_size=1),
-            nn.BatchNorm1d(256),
-            nn.ReLU(inplace=True),
-        )
-        self.gloab_conv.apply(weights_init_kaiming)
-
-        # Classifier for each stripe （parts feature）-------------------------------------
         self.parts_classifier_list = nn.ModuleList()
         for _ in range(self.parts):
             fc = nn.Linear(256, num_classes)
             nn.init.normal_(fc.weight, std=0.001)
             nn.init.constant_(fc.bias, 0)
             self.parts_classifier_list.append(fc)
+
+        # bilstm --------------------------------------------------------------------------
+        self.bilstm = nn.LSTM(256, 128, bidirectional=True)
+        self.bilstm_classifier_list = nn.ModuleList()
+        for _ in range(self.parts):
+            fc = nn.Linear(256, num_classes)
+            nn.init.normal_(fc.weight, std=0.001)
+            nn.init.constant_(fc.bias, 0)
+            self.bilstm_classifier_list.append(fc)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -335,15 +301,10 @@ class Resnet_pcb_3branch(nn.Module):
             stripe_features_H = self.local_conv_list[i](features_G[:, :, i, :])
             features_H.append(stripe_features_H)
 
-        # gloab([N, 512]) --------------------------------------------------------------------------
-        gloab_features = self.k11_conv(resnet_features)
-        gloab_features = self.gloab_agp(gloab_features).view(
-            batch_size, 512, -1
-        )  # ([N, 512, 1])
-        gloab_features = self.gloab_conv(gloab_features).squeeze()  # ([N, 512])
-
-        # feature fusion module--------------------------------------------------------------------------
-        fusion_feature = self.ffm(gloab_features, features_H)
+        # bilstm --------------------------------------------------------------------------
+        features_bilstm = torch.stack(features_H, 0)
+        features_bilstm = features_bilstm.squeeze()
+        features_bilstm, (_, _) = self.bilstm(features_bilstm)
 
         ######################################################################################################################
         # Return the features_H if inference--------------------------------------------------------------------------
@@ -360,4 +321,9 @@ class Resnet_pcb_3branch(nn.Module):
             for i in range(self.parts)
         ]  # shape list（[N, C=num_classes]）
 
-        return parts_score_list, gloab_features,fusion_feature
+        lstm_score_list = [
+            self.bilstm_classifier_list[i](features_bilstm[i].view(batch_size, -1))
+            for i in range(self.parts)
+        ]  # shape list（[N, C=num_classes]）
+
+        return parts_score_list, lstm_score_list
