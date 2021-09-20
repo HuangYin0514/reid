@@ -19,10 +19,10 @@ BASE-DL主要构建一个基本的深度学习框架
 
 ## 实验结果
 
-|        模型        | kaggle version |  r@1   |
-| :----------------: | :------------: | :----: |
-| Resnet_pcb_3branch |  Version 321   |  93.1  |
-|     Resnet_pcb     |     单元格     | 单元格 |
+|        模型        | kaggle version |  r@1  |
+| :----------------: | :------------: | :---: |
+| Resnet_pcb_3branch |  Version 321   | 93.1  |
+|     Resnet_pcb     |  Version 322   | 92.81 |
 
     
     
