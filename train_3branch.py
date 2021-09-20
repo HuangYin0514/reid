@@ -43,7 +43,7 @@ parser.add_argument("--img_width", type=int, default=2)
 # RandomResizedCrop=224
 # Resize=256
 # CenterCrop=224
-
+epoch_print = 3
 # parse
 opt = parser.parse_args()
 util.print_options(opt)
@@ -111,7 +111,9 @@ gallery_dataset = Market1501(
 
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
-    sampler=RandomIdentitySampler(train_dataset.dataset, opt.batch_size, num_instances=2),
+    sampler=RandomIdentitySampler(
+        train_dataset.dataset, opt.batch_size, num_instances=2
+    ),
     batch_size=opt.batch_size,
     num_workers=opt.num_workers,
     collate_fn=train_collate_fn,
@@ -190,7 +192,9 @@ def train():
             # all of loss -------------------------------------------------
             loss_param1 = 0.15
             loss_param2 = 0.005
-            loss = part_loss + loss_param1*gloab_loss[0] + loss_param2*fusion_loss[0]
+            loss = (
+                part_loss + loss_param1 * gloab_loss[0] + loss_param2 * fusion_loss[0]
+            )
 
             loss.backward()
             optimizer.step()
@@ -202,7 +206,7 @@ def train():
         scheduler.step()
 
         # print train infomation
-        if epoch % 1 == 0:
+        if epoch % epoch_print == 0:
             epoch_loss = running_loss / len(train_loader.dataset)
             time_remaining = (
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
@@ -223,7 +227,7 @@ def train():
             curve.y_train_loss.append(epoch_loss)
 
         # test
-        if epoch % 1 == 0:
+        if epoch % epoch_print == 0:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)
