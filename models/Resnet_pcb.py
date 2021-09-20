@@ -3,7 +3,6 @@ import math
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torchvision import models
 import torch.utils.model_zoo as model_zoo
 
 
@@ -304,8 +303,9 @@ class Resnet_pcb(nn.Module):
 
         ######################################################################################################################
         # classifier(parts)--------------------------------------------------------------------------
-        parts_score_list = [self.parts_classifier_list[i](features_H[i].view(batch_size, -1)) for i in range(self.parts)]  # shape list（[N, C=num_classes]）
+        parts_score_list = [
+            self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
+            for i in range(self.parts)
+        ]  # shape list（[N, C=num_classes]）
 
         return parts_score_list
-
-
