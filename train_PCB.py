@@ -70,7 +70,7 @@ logger = logger.Logger(save_dir_path)
 # draw curve instance
 curve = draw_curve.Draw_Curve(save_dir_path)
 # print epoch iter
-epoch_print = 1
+epoch_print = 20
 
 # data ============================================================================================================
 # data Augumentation
