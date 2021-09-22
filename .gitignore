@@ -7,8 +7,10 @@ datasets/
 
 # 生成的文件
 checkpoints/
+*.mat
 
 # 配置文件
 .vscode/
 .ipynb_checkpoints/
 .DS_Store
+
