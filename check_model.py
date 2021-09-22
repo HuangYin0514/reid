@@ -1,9 +1,9 @@
-from models import *
+from models.APNet import Baseline
 import torch
 
-model = Resnet_pcb_2branch(10)
+model = Baseline(1024, level=2)
 
-inputs = torch.randn(20,3,384,128)
+inputs = torch.randn(4,3,384,192)
 outputs = model(inputs)
 
 for output in outputs:
