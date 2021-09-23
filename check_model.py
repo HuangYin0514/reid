@@ -1,7 +1,7 @@
-from models.APNet import Baseline
+from models.asnet import asnet
 import torch
 
-model = Baseline(1024, level=2)
+model = asnet(2021)
 
 inputs = torch.randn(4,3,384,192)
 outputs = model(inputs)
