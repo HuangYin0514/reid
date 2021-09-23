@@ -300,12 +300,12 @@ class Resnet_pcb(nn.Module):
             v_g = torch.cat(features_H, dim=1)
             v_g = F.normalize(v_g, p=2, dim=1)
             return v_g.view(v_g.size(0), -1)
-
-        ######################################################################################################################
-        # classifier(parts)--------------------------------------------------------------------------
-        parts_score_list = [
-            self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
-            for i in range(self.parts)
-        ]  # shape list（[N, C=num_classes]）
+        else:
+            ######################################################################################################################
+            # classifier(parts)--------------------------------------------------------------------------
+            parts_score_list = [
+                self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
+                for i in range(self.parts)
+            ]  # shape list（[N, C=num_classes]）
 
         return parts_score_list
