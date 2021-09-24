@@ -147,7 +147,7 @@ gallery_loader = torch.utils.data.DataLoader(
 # model ============================================================================================================
 model = asnet(num_classes, loss="engine_as_net")
 model = model.to(device)
-print(model)
+# print(model)
 # criterion ============================================================================================================
 # criterion = F.cross_entropy
 # ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
