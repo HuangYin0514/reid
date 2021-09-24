@@ -72,7 +72,7 @@ logger = logger.Logger(save_dir_path)
 curve = draw_curve.Draw_Curve(save_dir_path)
 # print epoch iter
 epoch_print = 1
-
+start_eval_epoch = 30
 # data ============================================================================================================
 # data Augumentation
 train_transforms = T.Compose(
@@ -80,7 +80,7 @@ train_transforms = T.Compose(
         T.Resize((opt.img_height, opt.img_width), interpolation=3),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
-        RandomErasing(probability = 0.5, mean=[0.0, 0.0, 0.0]),
+        RandomErasing(probability=0.5, mean=[0.0, 0.0, 0.0]),
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
@@ -179,7 +179,7 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            parts_scores,lstm_score = model(inputs)
+            parts_scores, lstm_score = model(inputs)
 
             # parts loss -------------------------------------------------
             part_loss = 0
@@ -193,7 +193,7 @@ def train():
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 lstm_loss += stripe_loss
 
-            loss = part_loss+lstm_loss
+            loss = part_loss + lstm_loss
 
             loss.backward()
             optimizer.step()
@@ -205,7 +205,7 @@ def train():
         scheduler.step()
 
         # print train infomation
-        if epoch % epoch_print == 0:
+        if epoch % epoch_print == 0 and epoch > start_eval_epoch:
             epoch_loss = running_loss / len(train_loader.dataset)
             time_remaining = (
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
@@ -226,7 +226,7 @@ def train():
             curve.y_train_loss.append(epoch_loss)
 
         # test
-        if epoch % epoch_print == 0:
+        if epoch % epoch_print == 0 and epoch > start_eval_epoch:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)
