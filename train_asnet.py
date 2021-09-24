@@ -166,35 +166,21 @@ criterion_c = CenterLoss(
 
 # optimizer ============================================================================================================
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-lr = 0.000035
-# base_param_ids = set(map(id, model.backbone.parameters()))
-# new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
-# param_groups = [
-#     {"params": model.backbone.parameters(), "lr": lr / 10},
-#     {"params": new_params, "lr": lr},
-# ]
+lr = 0.1
 
-base_params = []
-base_layers = []
-new_params = []
-new_layers = ["classifier"]
-for name, module in model.named_children():
-    if name in new_layers:
-        new_params += [p for p in module.parameters()]
-    else:
-        base_params += [p for p in module.parameters()]
-        base_layers.append(name)
-
-param_groups = [
-    {"params": base_params, "lr": lr * 0.1},
-    {"params": new_params},
-]
-optimizer = torch.optim.Adam(
-    param_groups,
-    lr=lr,
-    weight_decay=0.0005,
-    betas=(0.9, 0.999),
+base_layers = torch.nn.ModuleList(
+    [model.layer0, model.layer1, model.layer2, model.layer3]
 )
+base_param_ids = set(map(id, base_layers.parameters()))
+new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+param_groups = [
+    {"params": base_layers.parameters(), "lr": lr / 10},
+    {"params": new_params, "lr": lr},
+]
+optimizer = torch.optim.SGD(
+    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
+)
+
 
 # # scheduler ============================================================================================================
 scheduler_multistep = torch.optim.lr_scheduler.MultiStepLR(
@@ -218,21 +204,16 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            parts_scores, lstm_score = model(inputs)
+            output, fea = model(inputs)
 
-            # parts loss -------------------------------------------------
-            part_loss = 0
-            for logits in parts_scores:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                part_loss += stripe_loss
+            loss_c = criterion_c(fea, labels)
+            loss_t = criterion_t(fea, labels)
+            loss_x = 0
+            for x in output:
+                loss_x += criterion_x(x, labels)
+            loss_x /= len(output)
 
-            # lstm loss -------------------------------------------------
-            lstm_loss = 0
-            for logits in lstm_score:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                lstm_loss += stripe_loss
-
-            loss = part_loss + lstm_loss
+            loss = 1 * loss_x + 1 * loss_t[0] + 0.0005 / (1.0 + 3) * loss_c
 
             loss.backward()
             optimizer.step()
