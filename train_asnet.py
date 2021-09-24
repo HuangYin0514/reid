@@ -160,7 +160,7 @@ criterion_x = CrossEntropyLoss(
     num_classes=num_classes, use_gpu=use_gpu, label_smooth=True
 )
 criterion_c = CenterLoss(
-    num_classes=751, feat_dim=2048 * (1 + 3), use_gpu=False
+    num_classes=751, feat_dim=2048 * (1 + 3), use_gpu=use_gpu
 )  # 20191221_1
 
 
