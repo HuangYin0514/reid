@@ -13,7 +13,7 @@ from loss.TripleLoss import TripletLoss
 from dataloader.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.market1501 import Market1501
 from dataloader.triplet_sampler import RandomIdentitySampler
-from models.Resnet_pcb_bilstm import Resnet_pcb_bilstm
+from models.Resnet_pcb import Resnet_pcb
 from utils import draw_curve, load_network, logger, util, reid_util
 
 # opt ==============================================================================
@@ -70,8 +70,8 @@ logger = logger.Logger(save_dir_path)
 # draw curve instance
 curve = draw_curve.Draw_Curve(save_dir_path)
 # print epoch iter
-epoch_print = 2
-start_eval_epoch = 30
+epoch_print = 20
+
 # data ============================================================================================================
 # data Augumentation
 train_transforms = T.Compose(
@@ -137,7 +137,7 @@ gallery_loader = torch.utils.data.DataLoader(
 )
 
 # model ============================================================================================================
-model = Resnet_pcb_bilstm(num_classes)
+model = Resnet_pcb(num_classes)
 model = model.to(device)
 
 # criterion ============================================================================================================
@@ -177,21 +177,15 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            parts_scores, lstm_score = model(inputs)
+            parts_scores = model(inputs)
 
-            # parts loss -------------------------------------------------
+            # parts loss-------------------------------------------------
             part_loss = 0
             for logits in parts_scores:
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 part_loss += stripe_loss
 
-            # lstm loss -------------------------------------------------
-            lstm_loss = 0
-            for logits in lstm_score:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                lstm_loss += stripe_loss
-
-            loss = part_loss + lstm_loss
+            loss = part_loss
 
             loss.backward()
             optimizer.step()
@@ -203,7 +197,7 @@ def train():
         scheduler.step()
 
         # print train infomation
-        if epoch % epoch_print == 0 and epoch > start_eval_epoch:
+        if epoch % epoch_print == 0:
             epoch_loss = running_loss / len(train_loader.dataset)
             time_remaining = (
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
@@ -224,7 +218,7 @@ def train():
             curve.y_train_loss.append(epoch_loss)
 
         # test
-        if epoch % epoch_print == 0 and epoch > start_eval_epoch:
+        if epoch % epoch_print == 0:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)

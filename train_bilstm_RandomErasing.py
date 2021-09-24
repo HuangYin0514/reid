@@ -13,6 +13,7 @@ from loss.TripleLoss import TripletLoss
 from dataloader.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.market1501 import Market1501
 from dataloader.triplet_sampler import RandomIdentitySampler
+from dataloader.random_erasing import RandomErasing
 from models.Resnet_pcb_bilstm import Resnet_pcb_bilstm
 from utils import draw_curve, load_network, logger, util, reid_util
 
@@ -79,6 +80,7 @@ train_transforms = T.Compose(
         T.Resize((opt.img_height, opt.img_width), interpolation=3),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
+        RandomErasing(probability=0.5, mean=[0.0, 0.0, 0.0]),
         T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
