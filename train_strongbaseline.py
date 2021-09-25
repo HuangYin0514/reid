@@ -8,12 +8,13 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 
-from loss.triplet_loss import TripletLoss, CrossEntropyLabelSmooth
-from dataloader.utils.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.market1501 import Market1501
+from dataloader.utils.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.utils.triplet_sampler import RandomIdentitySampler
+from loss.triplet_loss import CrossEntropyLabelSmooth, TripletLoss
 from models.strongbaseline import StrongBaseline
-from utils import draw_curve, load_network, logger, util, reid_util
+from utils import load_network, logger, reid_util, util
+from utils.logger import Draw_Curve, print_test_infomation, print_train_infomation
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -35,13 +36,11 @@ parser.add_argument("--num_epochs", type=int, default=2)
 # other
 parser.add_argument("--img_height", type=int, default=4)
 parser.add_argument("--img_width", type=int, default=2)
+# print epoch iter
+parser.add_argument("--epoch_train_print", type=int, default=1)
+parser.add_argument("--epoch_test_print", type=int, default=1)
+parser.add_argument("--epoch_start_test", type=int, default=0)
 
-# parser.add_argument("--Resize", type=int, default=2)
-# parser.add_argument("--CenterCrop", type=int, default=2)
-
-# RandomResizedCrop=224
-# Resize=256
-# CenterCrop=224
 
 # parse
 opt = parser.parse_args()
@@ -67,9 +66,7 @@ save_dir_path = os.path.join(opt.checkpoints_dir, opt.name)
 # Logger instance
 logger = logger.Logger(save_dir_path)
 # draw curve instance
-curve = draw_curve.Draw_Curve(save_dir_path)
-# print epoch iter
-epoch_print = 20
+curve = Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
 # data Augumentation
@@ -201,41 +198,24 @@ def train():
         # scheduler
         scheduler.step()
 
-        # print train infomation
-        if epoch % epoch_print == 0:
-            epoch_loss = running_loss / len(train_loader.dataset)
-            time_remaining = (
-                (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
+        if epoch % opt.epoch_train_print == 0:
+            print_train_infomation(
+                epoch,
+                opt.num_epochs,
+                running_loss,
+                train_loader,
+                logger,
+                curve,
+                start_time,
             )
-
-            logger.info(
-                "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
-                    epoch + 1,
-                    opt.num_epochs,
-                    epoch_loss,
-                    time_remaining // 3600,
-                    time_remaining / 60 % 60,
-                )
-            )
-
-            # plot curve
-            curve.x_epoch_loss.append(epoch + 1)
-            curve.y_train_loss.append(epoch_loss)
 
         # test
-        if epoch % epoch_print == 0:
+        if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)
-            
-            logger.info(
-                "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-                % (CMC[0], CMC[4], CMC[9], mAP)
-            )
 
-            curve.x_epoch_test.append(epoch + 1)
-            curve.y_test["top1"].append(CMC[0])
-            curve.y_test["mAP"].append(mAP)
+            print_test_infomation(epoch, CMC, mAP, curve, logger)
 
     # Save the loss curve
     curve.save_curve()
@@ -246,7 +226,7 @@ def train():
 
 
 @torch.no_grad()
-def test(epoch, normalize_feature=True, dist_metric="cosine"):
+def test(_, normalize_feature=True, dist_metric="cosine"):
     model.eval()
 
     # Extracting features from query set------------------------------------------------------------
