@@ -208,15 +208,15 @@ def train():
                 (opt.num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
             )
 
-            # logger.info(
-            #     "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
-            #         epoch + 1,
-            #         opt.num_epochs,
-            #         epoch_loss,
-            #         time_remaining // 3600,
-            #         time_remaining / 60 % 60,
-            #     )
-            # )
+            logger.info(
+                "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
+                    epoch + 1,
+                    opt.num_epochs,
+                    epoch_loss,
+                    time_remaining // 3600,
+                    time_remaining / 60 % 60,
+                )
+            )
 
             # plot curve
             curve.x_epoch_loss.append(epoch + 1)
@@ -227,10 +227,11 @@ def train():
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(epoch)
-            # logger.info(
-            #     "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-            #     % (CMC[0], CMC[4], CMC[9], mAP)
-            # )
+            
+            logger.info(
+                "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+                % (CMC[0], CMC[4], CMC[9], mAP)
+            )
 
             curve.x_epoch_test.append(epoch + 1)
             curve.y_test["top1"].append(CMC[0])
