@@ -10,9 +10,9 @@ import torchvision.transforms as T
 
 from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
 from loss.TripleLoss import TripletLoss
-from dataloader.collate_batch import train_collate_fn, val_collate_fn
+from dataloader.utils.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.market1501 import Market1501
-from dataloader.triplet_sampler import RandomIdentitySampler
+from dataloader.utils.triplet_sampler import RandomIdentitySampler
 from models.Resnet_pcb import Resnet_pcb
 from utils import draw_curve, load_network, logger, util, reid_util
 
