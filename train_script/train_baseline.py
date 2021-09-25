@@ -11,9 +11,8 @@ import torchvision.transforms as T
 from dataloader.getDataLoader import getData
 
 from models.baseline import Baseline
-from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
-from loss.TripleLoss import TripletLoss
-
+from loss.baselineloss import Softmax_Triplet_loss
+from loss.baselineloss import CenterLoss
 from utils import load_network, reid_util, util
 from utils.logger import (
     Logger,
@@ -21,7 +20,8 @@ from utils.logger import (
     print_test_infomation,
     print_train_infomation,
 )
-from dataloader.utils.RandomErasing import RandomErasing
+
+# from dataloader.utils.RandomErasing import RandomErasing
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -77,7 +77,7 @@ curve = Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
 # data Augumentation
-train_loader,query_loader,gallery_loader,num_classes = getData(opt)
+train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
 model = Baseline(num_classes)
@@ -90,10 +90,22 @@ model = model.to(device)
 use_gpu = False
 if device == "cuda":
     use_gpu = True
-criterion = F.cross_entropy
-ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
-triplet_loss = TripletLoss(margin=0.3)
+# criterion = F.cross_entropy
+# ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+# triplet_loss = TripletLoss(margin=0.3)
 
+criterion = Softmax_Triplet_loss(
+    num_class=num_classes,
+    margin=0.3,
+    epsilon=0.1,
+    use_gpu=use_gpu,
+)
+
+center_loss = CenterLoss(
+    num_classes=num_classes,
+    feature_dim=2048,
+    use_gpu=use_gpu,
+)
 # optimizer ============================================================================================================
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 lr = 0.1
@@ -128,7 +140,7 @@ def train():
 
             score, feat = model(inputs)
 
-            loss = xent(score, labels) + triplet(feat, labels)[0]
+            loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
 
             loss.backward()
             optimizer.step()

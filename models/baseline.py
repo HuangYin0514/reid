@@ -68,7 +68,7 @@ class Baseline(nn.Module):
 
         feat = self.bottleneck(x)
 
-        if self.is_training:
+        if self.training:
             score = self.classifier(feat)
             return score, x
         else:
