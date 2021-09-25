@@ -1,4 +1,4 @@
-from models.Resnet_strongbaseline import StrongBaseline
+from models.strongbaseline import StrongBaseline
 import torch
 
 model = StrongBaseline(2021)

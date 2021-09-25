@@ -124,13 +124,5 @@ class StrongBaseline(nn.Module):
             # print("Test with feature after BN")
             return feat
            
-if __name__ == '__main__':
-    model = StrongBaseline(2021)
-
-    inputs = torch.randn(4,3,256,128)
-    outputs = model(inputs)
-
-    for output in outputs:
-        print(output.shape)
 
     
