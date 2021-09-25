@@ -115,7 +115,7 @@ def print_train_infomation(
     time_remaining = (num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
 
     logger.info(
-        "Epoch:{}/{} \tTrain Loss:{:.4f}\tacc:{:.3f} \tETA:{:.0f}h{:.0f}m".format(
+        "Epoch:{}/{} \tTrain Loss:{:.4f}\tacc:{:.4f}% \tETA:{:.0f}h{:.0f}m".format(
             epoch + 1,
             num_epochs,
             epoch_loss,

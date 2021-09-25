@@ -154,7 +154,7 @@ def train():
         scheduler.step()
 
         if epoch % opt.epoch_train_print == 0:
-            accuracy = acc/len(train_loader.dataset)
+            accuracy = acc/len(train_loader.dataset)*100
             print_train_infomation(
                 epoch,
                 opt.num_epochs,
