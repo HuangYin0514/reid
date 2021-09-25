@@ -108,17 +108,18 @@ class Draw_Curve:
 
 
 def print_train_infomation(
-    epoch, num_epochs, running_loss, train_loader, logger, curve, start_time
+    epoch, num_epochs, running_loss, train_loader, logger, curve, start_time, accuracy
 ):
     # print train infomation
     epoch_loss = running_loss / len(train_loader.dataset)
     time_remaining = (num_epochs - epoch) * (time.time() - start_time) / (epoch + 1)
 
     logger.info(
-        "Epoch:{}/{} \tTrain Loss:{:.4f} \tETA:{:.0f}h{:.0f}m".format(
+        "Epoch:{}/{} \tTrain Loss:{:.4f}\tacc:{:.3f} \tETA:{:.0f}h{:.0f}m".format(
             epoch + 1,
             num_epochs,
             epoch_loss,
+            accuracy,
             time_remaining // 3600,
             time_remaining / 60 % 60,
         )

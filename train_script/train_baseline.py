@@ -132,13 +132,15 @@ def train():
         model.train()
 
         running_loss = 0.0
-
+        acc=0.0
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             # net ---------------------
             optimizer.zero_grad()
 
             score, feat = model(inputs)
+
+            _, preds = torch.max(score.data, dim=1)
 
             loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
 
@@ -147,11 +149,12 @@ def train():
             # --------------------------
 
             running_loss += loss.item() * inputs.size(0)
-
+            acc += torch.sum(preds == labels.data).double().item()
         # scheduler
         scheduler.step()
 
         if epoch % opt.epoch_train_print == 0:
+            accuracy = acc/len(train_loader.dataset)
             print_train_infomation(
                 epoch,
                 opt.num_epochs,
@@ -160,6 +163,7 @@ def train():
                 logger,
                 curve,
                 start_time,
+                accuracy
             )
 
         # test
