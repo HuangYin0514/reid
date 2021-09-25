@@ -13,7 +13,7 @@ BASE-DL主要构建一个基本的深度学习框架
 - 在macbook环境中，命令窗口执行
 
     ```python 
-    cd ~/Documents/project/base-dl
+    cd ~/Documents/project/reid
     conda activate py396
     ```
 
