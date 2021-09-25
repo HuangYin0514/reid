@@ -25,10 +25,8 @@ BASE-DL主要构建一个基本的深度学习框架
 |      Resnet_pcb      |  Version 322   | 92.81 |
 |  Resnet_pcb_bilstm   |  Version 324   | 93.3  |
 | bilstm_RandomErasing |  Version 327   | 92.5  |
-|        asnet         |  Version 328   |       |
-| bilstm_RandomErasing |  Version 329   |       |
+|        asnet         |  Version 328   |   x   |
 
 
 
-    
     

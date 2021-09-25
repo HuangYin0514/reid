@@ -1,9 +1,9 @@
-from models.asnet import asnet
+from models.Resnet_strongbaseline import StrongBaseline
 import torch
 
-model = asnet(2021)
+model = StrongBaseline(2021)
 
-inputs = torch.randn(4,3,384,192)
+inputs = torch.randn(4,3,256,128)
 outputs = model(inputs)
 
 for output in outputs:
