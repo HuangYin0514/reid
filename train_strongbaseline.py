@@ -8,11 +8,10 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 
-from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
-from loss.TripleLoss import TripletLoss
-from dataloader.collate_batch import train_collate_fn, val_collate_fn
+from loss.triplet_loss import TripletLoss, CrossEntropyLabelSmooth
+from dataloader.utils.collate_batch import train_collate_fn, val_collate_fn
 from dataloader.market1501 import Market1501
-from dataloader.triplet_sampler import RandomIdentitySampler
+from dataloader.utils.triplet_sampler import RandomIdentitySampler
 from models.strongbaseline import StrongBaseline
 from utils import draw_curve, load_network, logger, util, reid_util
 
@@ -76,6 +75,13 @@ epoch_print = 20
 # data Augumentation
 train_transforms = T.Compose(
     [
+        # T.Resize((opt.img_height, opt.img_width)),
+        # T.RandomHorizontalFlip(p=0.5),
+        # T.Pad(10),
+        # T.RandomCrop((opt.img_height, opt.img_width)),
+        # T.ToTensor(),
+        # RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
+        # T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         T.Resize((opt.img_height, opt.img_width), interpolation=3),
         T.RandomHorizontalFlip(),
         T.ToTensor(),
@@ -141,9 +147,14 @@ model = StrongBaseline(num_classes)
 model = model.to(device)
 
 # criterion ============================================================================================================
-criterion = F.cross_entropy
-ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
-triplet_loss = TripletLoss(margin=0.3)
+# criterion = F.cross_entropy
+# ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+# triplet_loss = TripletLoss(margin=0.3)
+use_gpu = False
+if device == "cuda":
+    use_gpu = True
+xent = CrossEntropyLabelSmooth(num_classes=num_classes, use_gpu=use_gpu)
+triplet = TripletLoss(0.3)  # triplet loss
 
 # optimizer ============================================================================================================
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
@@ -177,15 +188,9 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            parts_scores = model(inputs)
+            score, feat = model(inputs)
 
-            # parts loss-------------------------------------------------
-            part_loss = 0
-            for logits in parts_scores:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                part_loss += stripe_loss
-
-            loss = part_loss
+            loss = xent(score, labels) + triplet(feat, labels)[0]
 
             loss.backward()
             optimizer.step()
