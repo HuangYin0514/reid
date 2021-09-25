@@ -28,6 +28,7 @@ BASE-DL主要构建一个基本的深度学习框架
 |           asnet           |  Version 328   |   x   |
 |        pcb_256x128        |  Version 336   | 92.4  |
 | pcb_256x128_RandomErasing |  Version 337   |       |
+|         baseline          |  Version 338   |       |
 
 
 
