@@ -8,12 +8,12 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 
-from dataloader.market1501 import Market1501
-from dataloader.utils.collate_batch import train_collate_fn, val_collate_fn
-from dataloader.utils.triplet_sampler import RandomIdentitySampler
+from dataloader.getDataLoader import getData
 
-from loss.triplet_loss import CrossEntropyLabelSmooth, TripletLoss
-from models.strongbaseline import StrongBaseline
+from models.baseline import Baseline
+from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
+from loss.TripleLoss import TripletLoss
+
 from utils import load_network, reid_util, util
 from utils.logger import (
     Logger,
@@ -77,73 +77,10 @@ curve = Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
 # data Augumentation
-train_transforms = T.Compose(
-    [
-        T.Resize((opt.img_height, opt.img_width)),
-        T.RandomHorizontalFlip(p=0.5),
-        T.Pad(10),
-        T.RandomCrop((opt.img_height, opt.img_width)),
-        T.ToTensor(),
-        RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
-
-test_transforms = T.Compose(
-    [
-        T.Resize((opt.img_height, opt.img_width), interpolation=3),
-        T.ToTensor(),
-        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ]
-)
-
-# data loader
-train_dataset = Market1501(
-    root=opt.data_dir,
-    data_folder="bounding_box_train",
-    transform=train_transforms,
-    relabel=True,
-)
-
-num_classes = train_dataset.num_pids
-
-query_dataset = Market1501(
-    root=opt.data_dir, data_folder="query", transform=test_transforms, relabel=False
-)
-gallery_dataset = Market1501(
-    root=opt.data_dir,
-    data_folder="bounding_box_test",
-    transform=test_transforms,
-    relabel=False,
-)
-
-train_loader = torch.utils.data.DataLoader(
-    train_dataset,
-    sampler=RandomIdentitySampler(
-        train_dataset.dataset, opt.batch_size, num_instances=2
-    ),
-    batch_size=opt.batch_size,
-    num_workers=opt.num_workers,
-    collate_fn=train_collate_fn,
-)
-
-query_loader = torch.utils.data.DataLoader(
-    query_dataset,
-    batch_size=opt.test_batch_size,
-    shuffle=False,
-    num_workers=opt.num_workers,
-    collate_fn=val_collate_fn,
-)
-gallery_loader = torch.utils.data.DataLoader(
-    gallery_dataset,
-    batch_size=opt.test_batch_size,
-    shuffle=False,
-    num_workers=opt.num_workers,
-    collate_fn=val_collate_fn,
-)
+train_loader,query_loader,gallery_loader,num_classes = getData(opt)
 
 # model ============================================================================================================
-model = StrongBaseline(num_classes)
+model = Baseline(num_classes)
 model = model.to(device)
 
 # criterion ============================================================================================================
@@ -153,8 +90,9 @@ model = model.to(device)
 use_gpu = False
 if device == "cuda":
     use_gpu = True
-xent = CrossEntropyLabelSmooth(num_classes=num_classes, use_gpu=use_gpu)
-triplet = TripletLoss(0.3)  # triplet loss
+criterion = F.cross_entropy
+ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+triplet_loss = TripletLoss(margin=0.3)
 
 # optimizer ============================================================================================================
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)

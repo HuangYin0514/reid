@@ -1,8 +1,7 @@
-
 import torch
 import torch.nn as nn
 from .model_utils.resnet50 import resnet50
-from .model_utils.init_param import weights_init_classifier,weights_init_kaiming
+from .model_utils.init_param import weights_init_classifier, weights_init_kaiming
 
 
 class Resnet_Backbone(nn.Module):
@@ -38,24 +37,22 @@ class Resnet_Backbone(nn.Module):
         return x
 
 
-class StrongBaseline(nn.Module):
+class Baseline(nn.Module):
     def __init__(self, num_classes):
 
-        self.parts = 6
-        self.in_planes = 2048
-        
-        super(StrongBaseline, self).__init__()
+        self.num_classes = num_classes
+
+        super(Baseline, self).__init__()
 
         # backbone
         self.backbone = Resnet_Backbone()
 
-        self.gap = nn.AdaptiveAvgPool2d(1)
-        # self.gap = nn.AdaptiveMaxPool2d(1)
-        self.num_classes = num_classes
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
 
-        self.bottleneck = nn.BatchNorm1d(self.in_planes)
-        self.bottleneck.bias.requires_grad_(False)  # no shift
-        self.classifier = nn.Linear(self.in_planes, self.num_classes, bias=False)
+        self.bottleneck = nn.BatchNorm1d(2048)
+        self.bottleneck.bias.requires_grad_(False)
+
+        self.classifier = nn.Linear(2048, self.num_classes, bias=False)
 
         self.bottleneck.apply(weights_init_kaiming)
         self.classifier.apply(weights_init_classifier)
@@ -63,19 +60,16 @@ class StrongBaseline(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
 
-        global_feat = self.gap(self.backbone(x))  # (b, 2048, 1, 1)
-        global_feat = global_feat.view(
-            global_feat.shape[0], -1
-        )  # flatten to (bs, 2048)
+        x = self.backbone(x)
+        # x.size = (batch_size, 2048, 16, 8)
+        x = self.avgpool(x)
+        x = x.view(x.shape[0], -1)
+        # x.size() = (batch_size, 2048)
 
-        feat = self.bottleneck(global_feat)  # normalize for angular softmax
+        feat = self.bottleneck(x)
 
-        if self.training:
-            cls_score = self.classifier(feat)
-            return cls_score, global_feat  # global feature for triplet loss
+        if self.is_training:
+            score = self.classifier(feat)
+            return score, x
         else:
-            # print("Test with feature after BN")
             return feat
-           
-
-    
