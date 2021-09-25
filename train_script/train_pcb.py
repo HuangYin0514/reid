@@ -119,7 +119,7 @@ gallery_dataset = Market1501(
 train_loader = torch.utils.data.DataLoader(
     train_dataset,
     sampler=RandomIdentitySampler(
-        train_dataset.dataset, opt.batch_size, num_instances=2
+        train_dataset.dataset, opt.batch_size, num_instances=4
     ),
     batch_size=opt.batch_size,
     num_workers=opt.num_workers,
