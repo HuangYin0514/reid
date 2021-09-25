@@ -21,7 +21,6 @@ from utils.logger import (
     print_test_infomation,
     print_train_infomation,
 )
-from dataloader.utils.RandomErasing import RandomErasing
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
