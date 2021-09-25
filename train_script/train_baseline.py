@@ -20,7 +20,7 @@ from utils.logger import (
     print_test_infomation,
     print_train_infomation,
 )
-
+from optim.WarmupMultiStepLR import WarmupMultiStepLR
 # from dataloader.utils.RandomErasing import RandomErasing
 
 # opt ==============================================================================
@@ -108,21 +108,36 @@ center_loss = CenterLoss(
 )
 # optimizer ============================================================================================================
 # optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-lr = 0.1
-base_param_ids = set(map(id, model.backbone.parameters()))
-new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
-param_groups = [
-    {"params": model.backbone.parameters(), "lr": lr / 10},
-    {"params": new_params, "lr": lr},
-]
-optimizer = torch.optim.SGD(
-    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
+# lr = 0.1
+# base_param_ids = set(map(id, model.backbone.parameters()))
+# new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+# param_groups = [
+#     {"params": model.backbone.parameters(), "lr": lr / 10},
+#     {"params": new_params, "lr": lr},
+# ]
+# optimizer = torch.optim.SGD(
+#     param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
+# )
+
+optimizer = torch.optim.Adam(
+    model.parameters(),
+    lr=0.00035,
+    weight_decay=0.0005,
 )
+
+optimizer_centerloss = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 
 # # scheduler ============================================================================================================
 # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
-
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+scheduler = WarmupMultiStepLR(
+    optimizer,
+    milestones= [40, 70],
+    gamma=0.1,
+    warmup_factor=0.01,
+    warmup_iters=10,
+    warmup_method="linear",
+)
 
 # Training and test ============================================================================================================
 def train():
@@ -132,7 +147,7 @@ def train():
         model.train()
 
         running_loss = 0.0
-        acc=0.0
+        acc = 0.0
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             # net ---------------------
@@ -145,7 +160,9 @@ def train():
             loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
 
             loss.backward()
+
             optimizer.step()
+            optimizer_centerloss.step()
             # --------------------------
 
             running_loss += loss.item() * inputs.size(0)
@@ -154,7 +171,7 @@ def train():
         scheduler.step()
 
         if epoch % opt.epoch_train_print == 0:
-            accuracy = acc/len(train_loader.dataset)*100
+            accuracy = acc / len(train_loader.dataset) * 100
             print_train_infomation(
                 epoch,
                 opt.num_epochs,
@@ -163,7 +180,7 @@ def train():
                 logger,
                 curve,
                 start_time,
-                accuracy
+                accuracy,
             )
 
         # test
