@@ -8,7 +8,7 @@ import torch
 import torch.nn.functional as F
 import torchvision.transforms as T
 
-from dataloader.getDataLoader import getData
+from dataloader.getBaselineDataLoader import getData
 
 from models.baseline import Baseline
 from loss.baselineloss import Softmax_Triplet_loss
