@@ -1,7 +1,6 @@
 import argparse
 import os
 import random
-from re import I
 import time
 
 import numpy as np
@@ -185,8 +184,6 @@ def train():
     print("training is done !")
 
 
-from evaluators.distance import cosine_dist
-from  evaluators.rank import compute_AP
 @torch.no_grad()
 def test(epoch, normalize_feature=True):
     model.eval()
@@ -197,31 +194,16 @@ def test(epoch, normalize_feature=True):
     # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
     gf, g_pids, g_camids = feature_extractor(gallery_loader, model, device)
 
-
     # normalize_feature------------------------------------------------------------------------------
     if normalize_feature:
-        # print("Normalzing features with L2 norm ...")
         qf = F.normalize(qf, p=2, dim=1)
         gf = F.normalize(gf, p=2, dim=1)
 
     # Computing distance matrix------------------------------------------------------------------------
-    # print("Computing distance matrix with metric={} ...".format(dist_metric))
-    qf = np.array(qf.cpu())
-    gf = np.array(gf.cpu())
-    dist = cosine_dist(qf, gf)
-    rank_results = np.argsort(dist)[:, ::-1]
+    _, rank_results = compute_distance_matrix(qf, gf)
 
     # Computing CMC and mAP------------------------------------------------------------------------
-    # print("Computing CMC and mAP ...")
-    APs, CMC = [], []
-    for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
-        a_rank, query_camid, query_pid = data
-        ap, cmc = compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
-        APs.append(ap), CMC.append(cmc)
-    MAP = np.array(APs).mean()
-    min_len = min([len(cmc) for cmc in CMC])
-    CMC = [cmc[:min_len] for cmc in CMC]
-    CMC = np.mean(np.array(CMC), axis=0)
+    CMC, MAP = eval_market1501(rank_results, q_camids, q_pids, g_camids, g_pids)
 
     return CMC, MAP
 
