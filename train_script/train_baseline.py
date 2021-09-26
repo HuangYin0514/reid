@@ -107,23 +107,22 @@ center_loss = CenterLoss(
     use_gpu=use_gpu,
 )
 # optimizer ============================================================================================================
-# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-# lr = 0.1
-# base_param_ids = set(map(id, model.backbone.parameters()))
-# new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
-# param_groups = [
-#     {"params": model.backbone.parameters(), "lr": lr / 10},
-#     {"params": new_params, "lr": lr},
-# ]
-# optimizer = torch.optim.SGD(
-#     param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
-# )
-
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=0.00035,
-    weight_decay=0.0005,
+lr = 0.1
+base_param_ids = set(map(id, model.backbone.parameters()))
+new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+param_groups = [
+    {"params": model.backbone.parameters(), "lr": lr / 10},
+    {"params": new_params, "lr": lr},
+]
+optimizer = torch.optim.SGD(
+    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
 )
+
+# optimizer = torch.optim.Adam(
+#     model.parameters(),
+#     lr=0.00035,
+#     weight_decay=0.0005,
+# )
 
 optimizer_centerloss = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 

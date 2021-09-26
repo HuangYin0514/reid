@@ -31,8 +31,3 @@ BASE-DL主要构建一个基本的深度学习框架
 |         baseline          |  Version 338   | 83.9  |
 |    baseline_exceptData    |  Version 339   | 94.1  |
 |      baseline_triks       |  Version 340   | 93.5  |
-
-
-
-
-    
