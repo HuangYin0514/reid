@@ -47,24 +47,23 @@ class Baseline(nn.Module):
         # backbone
         self.backbone = Resnet_Backbone()
 
+        # baseline
         self.avgpool = nn.AdaptiveAvgPool2d(1)
-
         self.bottleneck = nn.BatchNorm1d(2048)
         self.bottleneck.bias.requires_grad_(False)
-
         self.classifier = nn.Linear(2048, self.num_classes, bias=False)
-
         self.bottleneck.apply(weights_init_kaiming)
         self.classifier.apply(weights_init_classifier)
+
 
     def forward(self, x):
         batch_size = x.size(0)
 
-        x = self.backbone(x)
-        # x.size = (batch_size, 2048, 16, 8)
+        x = self.backbone(x) #(batch_size, 2048, 16, 8)
+        
         x = self.avgpool(x)
-        x = x.view(x.shape[0], -1)
-        # x.size() = (batch_size, 2048)
+        x = x.view(x.shape[0], -1) # (batch_size, 2048)
+        # x.size() =
 
         feat = self.bottleneck(x)
 
