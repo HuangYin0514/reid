@@ -32,9 +32,7 @@ parser.add_argument("--name", type=str, default="person_reid")
 parser.add_argument(
     "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15_reduce"
 )
-# parser.add_argument(
-#     "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15"
-# )
+# parser.add_a
 parser.add_argument("--batch_size", default=20, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)
@@ -107,17 +105,6 @@ center_loss = CenterLoss(
     use_gpu=use_gpu,
 )
 # optimizer ============================================================================================================
-# lr = 0.1
-# base_param_ids = set(map(id, model.backbone.parameters()))
-# new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
-# param_groups = [
-#     {"params": model.backbone.parameters(), "lr": lr / 10},
-#     {"params": new_params, "lr": lr},
-# ]
-# optimizer = torch.optim.SGD(
-#     param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
-# )
-
 optimizer = torch.optim.Adam(
     model.parameters(),
     lr=0.00035,
