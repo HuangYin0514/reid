@@ -13,7 +13,7 @@ from evaluators.feature_extractor import feature_extractor
 from evaluators.rank import eval_market1501
 from loss.baselineloss import CenterLoss, Softmax_Triplet_loss
 from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
-from models.baselin_pcb import Baseline_PCB
+from models.baseline_pcb import Baseline_PCB
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import load_network, util
 from utils.logger import (Draw_Curve, Logger, print_test_infomation,

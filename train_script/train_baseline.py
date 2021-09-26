@@ -185,7 +185,7 @@ def train():
 
 
 @torch.no_grad()
-def test(_, normalize_feature=True, dist_metric="cosine"):
+def test(_, normalize_feature=True):
     model.eval()
 
     # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
