@@ -1,7 +1,7 @@
-
 import torch
 import torch.nn as nn
 from .model_utils.resnet50 import resnet50
+from .model_utils.init_param import weights_init_classifier, weights_init_kaiming
 import torch.nn.functional as F
 
 
@@ -37,18 +37,28 @@ class Resnet_Backbone(nn.Module):
 
         return x
 
-class Resnet_pcb(nn.Module):
+
+class Baseline_PCB(nn.Module):
     def __init__(self, num_classes):
 
-        self.parts = 6
+        self.num_classes = num_classes
 
-        super(Resnet_pcb, self).__init__()
+        super(Baseline_PCB, self).__init__()
 
         # backbone
         self.backbone = Resnet_Backbone()
 
-        # part(pcb）--------------------------------------------------------------------------
-        self.avgpool = nn.AdaptiveAvgPool2d((self.parts, 1))
+        # baseline
+        self.avgpool = nn.AdaptiveAvgPool2d(1)
+        self.bottleneck = nn.BatchNorm1d(2048)
+        self.bottleneck.bias.requires_grad_(False)
+        self.classifier = nn.Linear(2048, self.num_classes, bias=False)
+        self.bottleneck.apply(weights_init_kaiming)
+        self.classifier.apply(weights_init_classifier)
+
+        # part
+        self.parts = 6
+        self.part_avgpool = nn.AdaptiveAvgPool2d((self.parts, 1))
         self.local_conv_list = nn.ModuleList()
         for _ in range(self.parts):
             local_conv = nn.Sequential(
@@ -57,9 +67,9 @@ class Resnet_pcb(nn.Module):
                 nn.ReLU(inplace=True),
             )
             self.local_conv_list.append(local_conv)
-
-        # Classifier for each stripe （parts feature）-------------------------------------
-        self.parts_classifier_list = nn.ModuleList()
+        self.parts_classifier_list = (
+            nn.ModuleList()
+        )  # Classifier for each stripe （parts feature）
         for _ in range(self.parts):
             fc = nn.Linear(256, num_classes)
             nn.init.normal_(fc.weight, std=0.001)
@@ -69,31 +79,41 @@ class Resnet_pcb(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
 
-        # backbone(Tensor T)
-        resnet_features = self.backbone(x)
+        resnet_features = self.backbone(x)  # (batch_size, 2048, 16, 8)
 
-        # parts --------------------------------------------------------------------------
-        features_G = self.avgpool(resnet_features)  # tensor g([N, 2048, 6, 1])
-        features_H = []  # contains 6 ([N, 256, 1])
+        # baseline
+        baseline_out = self.avgpool(resnet_features)  # (batch_size, 2048, 1, 1)
+        baseline_out = baseline_out.view(batch_size, -1)  # (batch_size, 2048)
+        baseline_feat = self.bottleneck(baseline_out)  # (batch_size, 2048)
+
+        features_G = self.part_avgpool(
+            resnet_features
+        )  # tensor g([batch_size, 2048, 6, 1])
+        features_H = []  # contains 6 ([batch_size, 256, 1])
         for i in range(self.parts):
             stripe_features_H = self.local_conv_list[i](features_G[:, :, i, :])
             features_H.append(stripe_features_H)
 
-        ######################################################################################################################
-        # Return the features_H if inference--------------------------------------------------------------------------
-        if not self.training:
-            # features_H.append(gloab_features.unsqueeze_(2))  # ([N,1536+512])
-            v_g = torch.cat(features_H, dim=1)
-            v_g = F.normalize(v_g, p=2, dim=1)
-
-            
-            return v_g.view(v_g.size(0), -1)
-        else:
-            ######################################################################################################################
-            # classifier(parts)--------------------------------------------------------------------------
+        if self.training:
+            baseline_score = self.classifier(baseline_feat)  # (batch_size, num_classes)
             parts_score_list = [
                 self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
                 for i in range(self.parts)
-            ]  # shape list（[N, C=num_classes]）
+            ]  # （batch_size, num_classes）
+            return baseline_score, baseline_feat, parts_score_list
+        else:
+            # inference
 
-        return parts_score_list
+            # baseline
+            v_baseline = baseline_feat #（batch_size, 2048)
+            # part
+            v_part = torch.cat(features_H, dim=1)  #（batch_size, 1536)
+            v_part = F.normalize(v_part, p=2, dim=1)
+            v_part = v_part.view(batch_size, -1)
+
+            #result
+            v_result = torch.cat([v_baseline,v_baseline],dim=1)
+            v_result = F.normalize(v_result, p=2, dim=1)
+            v_result = v_result.view(batch_size, -1)
+
+            return v_result
