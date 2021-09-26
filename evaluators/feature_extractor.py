@@ -32,4 +32,4 @@ def feature_extractor(data_loader, model, device):
     data_pids = np.asarray(data_pids)
     data_camids = np.asarray(data_camids)
 
-    return data_f, pids, camids
+    return data_f, data_pids, data_camids
