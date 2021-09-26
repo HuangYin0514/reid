@@ -6,19 +6,21 @@ import time
 import numpy as np
 import torch
 import torch.nn.functional as F
-
 from dataloader.getDataLoader import getData
+from evaluators.distance import compute_distance_matrix
+from evaluators.feature_extractor import feature_extractor
+from evaluators.rank import eval_market1501
 from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
 from loss.TripleLoss import TripletLoss
-
 from models.pcb import Resnet_pcb
-from utils import load_network, reid_util, util
+from utils import load_network, util
 from utils.logger import (
-    Logger,
     Draw_Curve,
+    Logger,
     print_test_infomation,
     print_train_infomation,
 )
+
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
 # base (env setting)
@@ -68,12 +70,12 @@ save_dir_path = os.path.join(opt.checkpoints_dir, opt.name)
 # Logger instance
 logger = Logger(save_dir_path)
 # draw curve instance
-curve =Draw_Curve(save_dir_path)
+curve = Draw_Curve(save_dir_path)
 
 
 # data ============================================================================================================
 # data Augumentation
-train_loader,query_loader,gallery_loader,num_classes = getData(opt)
+train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
 model = Resnet_pcb(num_classes)
@@ -136,6 +138,7 @@ def train():
         scheduler.step()
 
         if epoch % opt.epoch_train_print == 0:
+            accuracy = 0
             print_train_infomation(
                 epoch,
                 opt.num_epochs,
@@ -144,6 +147,7 @@ def train():
                 logger,
                 curve,
                 start_time,
+                accuracy,
             )
 
         # test
@@ -154,7 +158,6 @@ def train():
 
             print_test_infomation(epoch, CMC, mAP, curve, logger)
 
-
     # Save the loss curve
     curve.save_curve()
     # Save final model weights
@@ -164,71 +167,26 @@ def train():
 
 
 @torch.no_grad()
-def test(epoch, normalize_feature=True, dist_metric="cosine"):
+def test(_, normalize_feature=True, dist_metric="cosine"):
     model.eval()
 
-    # Extracting features from query set------------------------------------------------------------
-    # print("Extracting features from query set ...")
-    qf, q_pids, q_camids = (
-        [],
-        [],
-        [],
-    )  # query features, query person IDs and query camera IDs
-    for _, data in enumerate(query_loader):
-        imgs, pids, camids = reid_util._parse_data_for_eval(data)
-        imgs = imgs.to(device)
-        features = reid_util._extract_features(model, imgs)
-        qf.append(features)
-        q_pids.extend(pids)
-        q_camids.extend(camids)
-    qf = torch.cat(qf, 0)
-    q_pids = np.asarray(q_pids)
-    q_camids = np.asarray(q_camids)
+    # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
+    qf, q_pids, q_camids = feature_extractor(query_loader, model, device)
     # print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
-    # Extracting features from gallery set------------------------------------------------------------
-    # print("Extracting features from gallery set ...")
-    gf, g_pids, g_camids = (
-        [],
-        [],
-        [],
-    )  # gallery features, gallery person IDs and gallery camera IDs
-    for _, data in enumerate(gallery_loader):
-        imgs, pids, camids = reid_util._parse_data_for_eval(data)
-        imgs = imgs.to(device)
-        features = reid_util._extract_features(model, imgs)
-        gf.append(features)
-        g_pids.extend(pids)
-        g_camids.extend(camids)
-    gf = torch.cat(gf, 0)
-    g_pids = np.asarray(g_pids)
-    g_camids = np.asarray(g_camids)
-    # print("Done, obtained {}-by-{} matrix".format(gf.size(0), gf.size(1)))
+    # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
+    gf, g_pids, g_camids = feature_extractor(gallery_loader, model, device)
 
     # normalize_feature------------------------------------------------------------------------------
     if normalize_feature:
-        # print("Normalzing features with L2 norm ...")
         qf = F.normalize(qf, p=2, dim=1)
         gf = F.normalize(gf, p=2, dim=1)
 
     # Computing distance matrix------------------------------------------------------------------------
-    # print("Computing distance matrix with metric={} ...".format(dist_metric))
-    qf = np.array(qf.cpu())
-    gf = np.array(gf.cpu())
-    dist = reid_util.cosine_dist(qf, gf)
-    rank_results = np.argsort(dist)[:, ::-1]
+    _, rank_results = compute_distance_matrix(qf, gf)
 
     # Computing CMC and mAP------------------------------------------------------------------------
-    # print("Computing CMC and mAP ...")
-    APs, CMC = [], []
-    for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
-        a_rank, query_camid, query_pid = data
-        ap, cmc = reid_util.compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
-        APs.append(ap), CMC.append(cmc)
-    MAP = np.array(APs).mean()
-    min_len = min([len(cmc) for cmc in CMC])
-    CMC = [cmc[:min_len] for cmc in CMC]
-    CMC = np.mean(np.array(CMC), axis=0)
+    CMC, MAP = eval_market1501(rank_results, q_camids, q_pids, g_camids, g_pids)
 
     return CMC, MAP
 

@@ -1,29 +1,5 @@
-
 import numpy as np
-
-def _parse_data_for_eval(data):
-    imgs = data[0]
-    pids = data[1]
-    camids = data[2]
-    
-    return imgs, pids, camids
-
-
-def _extract_features(model, input):
-    model.eval()
-    return model(input)
-
-
-def cosine_dist(x, y):
-    '''compute cosine distance between two martrix x and y with sizes (n1, d), (n2, d)'''
-    def normalize(x):
-        '''normalize a 2d matrix along axis 1'''
-        norm = np.tile(np.sqrt(np.sum(np.square(x), axis=1, keepdims=True)), [1, x.shape[1]])
-        return x / norm
-    x = normalize(x)
-    y = normalize(y)
-    return np.matmul(x, y.transpose([1, 0]))
-
+ 
 
 def in1d( array1, array2, invert=False):
     '''
@@ -73,4 +49,16 @@ def compute_AP(a_rank, query_camid, query_pid, gallery_camids, gallery_pids, mod
         cmc[index_hit[0]:] = 1
     return AP, cmc
 
-    
+def eval_market1501(rank_results,q_camids,q_pids,g_camids,g_pids ):
+        
+    APs, CMC = [], []
+    for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
+        a_rank, query_camid, query_pid = data
+        ap, cmc = compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
+        APs.append(ap), CMC.append(cmc)
+    MAP = np.array(APs).mean()
+    min_len = min([len(cmc) for cmc in CMC])
+    CMC = [cmc[:min_len] for cmc in CMC]
+    CMC = np.mean(np.array(CMC), axis=0)
+
+    return CMC, MAP
