@@ -35,4 +35,5 @@ BASE-DL主要构建一个基本的深度学习框架
 |    baseline_triks_optim    |  Version 344   | 91.9  |
 |   baseline_RandomErasing   |  Version 345   | 94.1  |
 | baseline_not—RandomErasing |  Version 347   | 92.2  |
-|    baseline_batchsize64    |  Version 348   |       |
+|    baseline_batchsize64    |  Version 349   |       |
+|        baseline_pcb        |  Version 350   |       |
