@@ -33,5 +33,5 @@ BASE-DL主要构建一个基本的深度学习框架
 |       baseline_triks       |  Version 340   | 93.5  |
 |   baseline_triks_fixdata   |  Version 342   | 93.8  |
 |    baseline_triks_optim    |  Version 344   | 91.9  |
-|   baseline_RandomErasing   |  Version 345   |       |
-| baseline_not—RandomErasing |  Version 347   |       |
+|   baseline_RandomErasing   |  Version 345   | 94.1  |
+| baseline_not—RandomErasing |  Version 347   | 92.2  |
