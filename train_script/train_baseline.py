@@ -190,7 +190,6 @@ def test(_, normalize_feature=True):
 
     # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
     qf, q_pids, q_camids = feature_extractor(query_loader, model, device)
-    # print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
     # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
     gf, g_pids, g_camids = feature_extractor(gallery_loader, model, device)
