@@ -55,8 +55,6 @@ class Baseline(nn.Module):
         self.bottleneck.apply(weights_init_kaiming)
         self.classifier.apply(weights_init_classifier)
 
-        
-
     def forward(self, x):
         batch_size = x.size(0)
 
