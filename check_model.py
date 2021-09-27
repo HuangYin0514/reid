@@ -1,8 +1,8 @@
-from models.baselin_pcb import Baseline_PCB
+from models.baseline_pcb import Baseline_PCB
 import torch
 
 model = Baseline_PCB(2021)
-# model.eval()
+model.eval()
 inputs = torch.randn(4,3,256,128)
 outputs = model(inputs)
 

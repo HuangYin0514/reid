@@ -108,7 +108,7 @@ class Baseline_PCB(nn.Module):
             v_baseline = baseline_feat #（batch_size, 2048)
             # part
             v_part = torch.cat(features_H, dim=1)  #（batch_size, 1536)
-            v_part = F.normalize(v_part, p=2, dim=1)
+            # v_part = F.normalize(v_part, p=2, dim=1)
             v_part = v_part.view(batch_size, -1)
 
             #result
