@@ -38,4 +38,4 @@ BASE-DL主要构建一个基本的深度学习框架
 |     baseline_batchsize64     |  Version 349   | 93.8  |
 |         baseline_pcb         |  Version 350   | 93.9  |
 |      baseline_pcb-bs128      |  Version 351   | 93.2  |
-| baseline_pcb-normalize_bs128 |  Version 352   |       |
+| baseline_pcb-normalize_bs128 |  Version 352   | 93.2  |

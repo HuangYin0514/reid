@@ -1,27 +1,20 @@
 import argparse
 import os
 import random
-from re import I
 import time
+from re import I
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-import torchvision.transforms as T
 from dataloader.getDataLoader import getData
-from evaluators.distance import compute_distance_matrix
 from evaluators.feature_extractor import feature_extractor
-from evaluators.rank import eval_market1501
 from loss.baselineloss import CenterLoss, Softmax_Triplet_loss
 from models.baseline import Baseline
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import load_network, util
-from utils.logger import (
-    Draw_Curve,
-    Logger,
-    print_test_infomation,
-    print_train_infomation,
-)
+from utils.logger import (Draw_Curve, Logger, print_test_infomation,
+                          print_train_infomation)
 
 # from dataloader.utils.RandomErasing import RandomErasing
 
@@ -186,7 +179,9 @@ def train():
 
 
 from evaluators.distance import cosine_dist
-from  evaluators.rank import compute_AP
+from evaluators.rank import compute_AP
+
+
 @torch.no_grad()
 def test(epoch, normalize_feature=True):
     model.eval()
