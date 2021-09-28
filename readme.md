@@ -40,5 +40,5 @@ BASE-DL主要构建一个基本的深度学习框架
 |      baseline_pcb-bs128      |  Version 351   | 93.2  |
 | baseline_pcb-normalize_bs128 |  Version 352   | 93.2  |
 |    baseline_RandomErasing    |  Version 353   | 94.1  |
-|             pcb              |  Version 352   |       |
+|  pcb-256x128_RandomErasing   |  Version 354   |       |
 
