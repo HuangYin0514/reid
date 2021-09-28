@@ -12,7 +12,7 @@ from evaluators.feature_extractor import feature_extractor
 from evaluators.rank import eval_market1501
 from loss.crossEntropyLabelSmoothLoss import CrossEntropyLabelSmoothLoss
 from loss.TripleLoss import TripletLoss
-from models.Resnet_pcb_bilstm import Resnet_pcb_bilstm
+from models.pcb_bilstm_3branch import pcb_bilstm_3branch
 from utils import load_network, util
 from utils.logger import (
     Draw_Curve,
@@ -80,10 +80,10 @@ curve = Draw_Curve(save_dir_path)
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
-model = Resnet_pcb_bilstm(num_classes)
+model = pcb_bilstm_3branch(num_classes)
 model = model.to(device)
-load_network.load_network(model,opt.pretrain_dir)
-    
+load_network.load_network(model, opt.pretrain_dir)
+
 
 # criterion ============================================================================================================
 criterion = F.cross_entropy
@@ -122,8 +122,7 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            parts_scores, lstm_score = model(inputs)
-
+            parts_scores, lstm_score, gloab_features, fusion_feature = model(inputs)
 
             # parts loss -------------------------------------------------
             part_loss = 0
@@ -137,7 +136,13 @@ def train():
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 lstm_loss += stripe_loss
 
-            loss = part_loss + lstm_loss
+            # gloab loss-------------------------------------------------
+            gloab_loss = triplet_loss(gloab_features, labels)
+
+            # fusion loss-------------------------------------------------
+            fusion_loss = triplet_loss(fusion_feature, labels)
+
+            loss = part_loss + lstm_loss + gloab_loss[0]+ fusion_loss[0]
 
             loss.backward()
             optimizer.step()
