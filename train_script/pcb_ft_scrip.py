@@ -96,7 +96,7 @@ lr = 0.1
 base_param_ids = set(map(id, model.backbone.parameters()))
 new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
 param_groups = [
-    {"params": model.backbone.parameters(), "lr": lr / 10},
+    {"params": model.backbone.parameters(), "lr": lr / 100},
     {"params": new_params, "lr": lr},
 ]
 optimizer = torch.optim.SGD(

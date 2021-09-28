@@ -43,6 +43,6 @@ BASE-DL主要构建一个基本的深度学习框架
 |   pcb-256x128_RandomErasing    |  Version 354   | 92.2  |
 | pcb_lstm-256x128_RandomErasing |  Version 355   | 93.0  |
 |       pcb_lstm-ft_lr/100       |  Version 356   | 93.4  |
-|          pcb_lstm-ft           |  Version 357   |       |
-|      pcb_lstm-ft_3branch       |  Version 358   |       |
+|          pcb_lstm-ft           |  Version 357   | 92.9  |
+|      pcb_lstm-ft_3branch       |  Version 358   | 92.7  |
 
