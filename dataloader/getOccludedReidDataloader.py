@@ -42,7 +42,7 @@ def getOccludedreidData(data_dir, opt):
         data_folder="occluded_body_images",
         transform=test_transforms,
         relabel=False,
-        is_query=False,
+        is_query=True,
     )
     gallery_dataset = Occluded_REID(
         root=data_dir,

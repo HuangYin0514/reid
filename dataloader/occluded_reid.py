@@ -19,7 +19,7 @@ class Occluded_REID(Dataset):
         self.dataset_dir = os.path.join(root, self.dataset_dir)
         self.data_dir = os.path.join(self.dataset_dir, data_folder)
 
-        self.dataset = self._process_dir(self.data_dir, relabel=relabel)
+        self.dataset = self._process_dir(self.data_dir, relabel=relabel, is_query=is_query)
         self.num_pids, self.num_imgs, self.num_cams = self._get_imagedata_info(
             self.dataset
         )

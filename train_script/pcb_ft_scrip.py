@@ -199,15 +199,15 @@ def train():
 
 
 @torch.no_grad()
-def test(query_loader, gallery_loader, normalize_feature=True, dist_metric="cosine"):
+def test(q_loader, g_loader, normalize_feature=True, dist_metric="cosine"):
     model.eval()
 
     # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
-    qf, q_pids, q_camids = feature_extractor(query_loader, model, device)
+    qf, q_pids, q_camids = feature_extractor(q_loader, model, device)
     # print("Done, obtained {}-by-{} matrix".format(qf.size(0), qf.size(1)))
 
     # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
-    gf, g_pids, g_camids = feature_extractor(gallery_loader, model, device)
+    gf, g_pids, g_camids = feature_extractor(g_loader, model, device)
 
     # normalize_feature------------------------------------------------------------------------------
     if normalize_feature:
