@@ -49,6 +49,6 @@ BASE-DL主要构建一个基本的深度学习框架
 | pcb_lstm-ft_3branch_lr/100_weight |  Version 360   | 93.0  |
 |  pcb_lstm-ft_3branch_lr/100_fs*0  |  Version 361   | 90.0  |
 |      pcb_lstm- occludedreid       |  Version 362   | 92.9  |     52.1     |
-|                ffm                |  Version 364   |       |              |
+|                ffm                |  Version 364   | 85.4      |      58.0        |
 
 
