@@ -152,7 +152,7 @@ def train():
             # fusion loss-------------------------------------------------
             fusion_loss = triplet_loss(fusion_feature, labels)
 
-            loss = part_loss + lstm_loss + 0.15 * gloab_loss[0] + 0 * fusion_loss[0]
+            loss = part_loss + lstm_loss + 0.15 * gloab_loss[0] + 0.005 * fusion_loss[0]
 
             loss.backward()
             optimizer.step()
