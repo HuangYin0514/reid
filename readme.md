@@ -19,8 +19,8 @@ BASE-DL主要构建一个基本的深度学习框架
 
 ## 实验结果
 
-|               模型                | kaggle version |  r@1  |
-| :-------------------------------: | :------------: | :---: |
+|               模型                | kaggle version |  r@1  | occludedreid |
+| :-------------------------------: | :------------: | :---: | :----------: |
 |        Resnet_pcb_3branch         |  Version 321   | 93.1  |
 |            Resnet_pcb             |  Version 322   | 92.81 |
 |         Resnet_pcb_bilstm         |  Version 324   | 93.3  |
@@ -47,5 +47,7 @@ BASE-DL主要构建一个基本的深度学习框架
 |        pcb_lstm-ft_3branch        |  Version 358   | 92.7  |
 |    pcb_lstm-ft_3branch_lr/100     |  Version 359   | 93.3  |
 | pcb_lstm-ft_3branch_lr/100_weight |  Version 360   | 93.0  |
-|  pcb_lstm-ft_3branch_lr/100_fs*0  |  Version 361   |  90.0  |
+|  pcb_lstm-ft_3branch_lr/100_fs*0  |  Version 361   | 90.0  |
+|      pcb_lstm- occludedreid       |  Version 362   | 92.9  |     52.1     |
+
 
