@@ -47,7 +47,7 @@ def getData(opt):
     train_loader = torch.utils.data.DataLoader(
         train_dataset,
         sampler=RandomIdentitySampler(
-            train_dataset.dataset, opt.batch_size, num_instances=4
+            train_dataset.dataset, opt.batch_size, num_instances=2
         ),
         batch_size=opt.batch_size,
         num_workers=opt.num_workers,
