@@ -7,6 +7,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from dataloader.getPCBDataLoader import getData
+from dataloader.getOccludedReidDataloader import getOccludedreidData
 from evaluators.distance import compute_distance_matrix
 from evaluators.feature_extractor import feature_extractor
 from evaluators.rank import eval_market1501
@@ -19,6 +20,7 @@ from utils.logger import (
     Logger,
     print_test_infomation,
     print_train_infomation,
+    print_other_test_infomation
 )
 
 # opt ==============================================================================
@@ -30,6 +32,7 @@ parser.add_argument("--name", type=str, default="person_reid")
 parser.add_argument(
     "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15_reduce"
 )
+parser.add_argument("--test_data_dir", type=str, default="./datasets/Occluded_REID_reduce")
 parser.add_argument("--batch_size", default=20, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)
@@ -78,6 +81,13 @@ curve = Draw_Curve(save_dir_path)
 # data ============================================================================================================
 # data Augumentation
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
+(
+    train_or_loader,
+    query_or_loader,
+    gallery_or_loader,
+    num_or_classes,
+) = getOccludedreidData(data_dir=opt.test_data_dir, opt=opt)
+
 
 # model ============================================================================================================
 model = pcb_bilstm_3branch(num_classes)
@@ -142,7 +152,7 @@ def train():
             # fusion loss-------------------------------------------------
             fusion_loss = triplet_loss(fusion_feature, labels)
 
-            loss = part_loss + lstm_loss + 0.15*gloab_loss[0]+ 0*fusion_loss[0]
+            loss = part_loss + lstm_loss + 0.15 * gloab_loss[0] + 0 * fusion_loss[0]
 
             loss.backward()
             optimizer.step()
@@ -170,9 +180,15 @@ def train():
         if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
-            CMC, mAP = test(epoch)
-
+            CMC, mAP = test(query_loader, gallery_loader)
             print_test_infomation(epoch, CMC, mAP, curve, logger)
+
+        # test other dataset
+        if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
+            # test current datset-------------------------------------
+            torch.cuda.empty_cache()
+            CMC, mAP = test(query_or_loader, gallery_or_loader)
+            print_other_test_infomation(epoch, CMC, mAP, curve, logger)
 
     # Save the loss curve
     curve.save_curve()
@@ -183,7 +199,7 @@ def train():
 
 
 @torch.no_grad()
-def test(_, normalize_feature=True, dist_metric="cosine"):
+def test(query_loader, gallery_loader, normalize_feature=True, dist_metric="cosine"):
     model.eval()
 
     # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------

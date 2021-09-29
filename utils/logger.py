@@ -53,6 +53,10 @@ class Draw_Curve:
         self.y_test["top1"] = []
         self.y_test["mAP"] = []
 
+        self.y_other_test = {}
+        self.y_other_test["top1"] = []
+        self.y_other_test["mAP"] = []
+
     def save_curve(self):
 
         # 损失函数的曲线
@@ -82,6 +86,26 @@ class Draw_Curve:
                 label="mAP",
             )
             self._plot_max_point(self.ax1, self.y_test["mAP"])
+
+
+            # other dataset of top1和mAP的曲线
+            self.ax1.plot(
+                self.x_epoch_test,
+                self.y_other_test["top1"],
+                "rs-",
+                markersize="2",
+                label="top1",
+            )
+            self._plot_max_point(self.ax1, self.y_other_test["top1"])
+            self.ax1.plot(
+                self.x_epoch_test,
+                self.y_other_test["mAP"],
+                "bs-",
+                markersize="2",
+                label="mAP",
+            )
+            self._plot_max_point(self.ax1, self.y_other_test["mAP"])
+
             self.ax1.set_ylabel("%")
             self.ax1.set_xlabel("Epoch")
             self.ax1.legend()
@@ -138,3 +162,14 @@ def print_test_infomation(epoch, CMC, mAP, curve, logger):
     curve.x_epoch_test.append(epoch + 1)
     curve.y_test["top1"].append(CMC[0])
     curve.y_test["mAP"].append(mAP)
+
+
+def print_other_test_infomation(epoch, CMC, mAP, curve, logger):
+    logger.info(
+        "Other dataset of Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+        % (CMC[0], CMC[4], CMC[9], mAP)
+    )
+
+    # curve.x_epoch_test.append(epoch + 1)
+    curve.y_other_test["top1"].append(CMC[0])
+    curve.y_other_test["mAP"].append(mAP)
