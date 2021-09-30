@@ -1,262 +1,146 @@
-import types
+import numpy as np
 import torch
-import torch.nn as nn
-from torch.autograd import Function
+from torch import nn
+from torch.autograd import Variable
+import pdb
 
+import sys
 
-def CountSketchFn_forward(h, s, output_size, x, force_cpu_scatter_add=False):
-    x_size = tuple(x.size())
+"""
+Original code from https://github.com/DeepInsight-PCALab/CompactBilinearPooling-Pytorch/blob/master/CompactBilinearPooling.py
+Hacked by Sungyong Baik (dsybaik@snu.ac.kr)
+"""
 
-    s_view = (1,) * (len(x_size)-1) + (x_size[-1],)
-
-    out_size = x_size[:-1] + (output_size,)
-
-    # Broadcast s and compute x * s
-    s = s.view(s_view)
-    xs = x * s
-
-    # Broadcast h then compute h:
-    # out[h_i] += x_i * s_i
-    h = h.view(s_view).expand(x_size)
-
-    if force_cpu_scatter_add:
-        out = x.new(*out_size).zero_().cpu()
-        return out.scatter_add_(-1, h.cpu(), xs.cpu())
-    else:
-        out = x.new(*out_size).zero_()
-        return out.scatter_add_(-1, h, xs)
-
-
-def CountSketchFn_backward(h, s, x_size, grad_output):
-    s_view = (1,) * (len(x_size)-1) + (x_size[-1],)
-
-    s = s.view(s_view)
-    h = h.view(s_view).expand(x_size)
-
-    grad_x = grad_output.gather(-1, h)
-    grad_x = grad_x * s
-    return grad_x
-
-class CountSketchFn(Function):
-
-    @staticmethod
-    def forward(ctx, h, s, output_size, x, force_cpu_scatter_add=False):
-        x_size = tuple(x.size())
-
-        ctx.save_for_backward(h,s)
-        ctx.x_size = tuple(x.size())
-
-        return CountSketchFn_forward(h, s, output_size, x, force_cpu_scatter_add)
-
-
-    @staticmethod
-    def backward(ctx, grad_output):
-        h,s = ctx.saved_variables
-
-        grad_x = CountSketchFn_backward(h,s,ctx.x_size,grad_output)
-        return None, None, None, grad_x
-
-class CountSketch(nn.Module):
-    r"""Compute the count sketch over an input signal.
-    .. math::
-        out_j = \sum_{i : j = h_i} s_i x_i
-    Args:
-        input_size (int): Number of channels in the input array
-        output_size (int): Number of channels in the output sketch
-        h (array, optional): Optional array of size input_size of indices in the range [0,output_size]
-        s (array, optional): Optional array of size input_size of -1 and 1.
-    .. note::
-        If h and s are None, they will be automatically be generated using LongTensor.random_.
-    Shape:
-        - Input: (...,input_size)
-        - Output: (...,output_size)
-    References:
-        Yang Gao et al. "Compact Bilinear Pooling" in Proceedings of IEEE Conference on Computer Vision and Pattern Recognition (2016).
-        Akira Fukui et al. "Multimodal Compact Bilinear Pooling for Visual Question Answering and Visual Grounding", arXiv:1606.01847 (2016).
-    """
-
-    def __init__(self, input_size, output_size, h = None, s = None):
-        super(CountSketch, self).__init__()
-
-        self.input_size = input_size
-        self.output_size = output_size
-
-        if h is None:
-            h = torch.LongTensor(input_size).random_(0, output_size)
-        if s is None:
-            s = 2 * torch.Tensor(input_size).random_(0,2) - 1
-
-        # The Variable h being a list of indices,
-        # If the type of this module is changed (e.g. float to double),
-        # the variable h should remain a LongTensor
-        # therefore we force float() and double() to be no-ops on the variable h.
-        def identity(self):
-            return self
-
-        h.float = types.MethodType(identity,h)
-        h.double = types.MethodType(identity,h)
-
-        self.register_buffer('h',h)
-        self.register_buffer('s',s)
-
-    def forward(self, x):
-        x_size = list(x.size())
-
-        assert(x_size[-1] == self.input_size)
-
-        return CountSketchFn.apply(self.h, self.s, self.output_size, x)
-
-def ComplexMultiply_forward(X_re, X_im, Y_re, Y_im):
-    Z_re = torch.addcmul(X_re*Y_re, -1, X_im, Y_im)
-    Z_im = torch.addcmul(X_re*Y_im,  1, X_im, Y_re)
-    return Z_re,Z_im
-
-def ComplexMultiply_backward(X_re, X_im, Y_re, Y_im, grad_Z_re, grad_Z_im):
-    grad_X_re = torch.addcmul(grad_Z_re * Y_re,  1, grad_Z_im, Y_im)
-    grad_X_im = torch.addcmul(grad_Z_im * Y_re, -1, grad_Z_re, Y_im)
-    grad_Y_re = torch.addcmul(grad_Z_re * X_re,  1, grad_Z_im, X_im)
-    grad_Y_im = torch.addcmul(grad_Z_im * X_re, -1, grad_Z_re, X_im)
-    return grad_X_re,grad_X_im,grad_Y_re,grad_Y_im
-
-class ComplexMultiply(torch.autograd.Function):
-
-    @staticmethod
-    def forward(ctx, X_re, X_im, Y_re, Y_im):
-        ctx.save_for_backward(X_re,X_im,Y_re,Y_im)
-        return ComplexMultiply_forward(X_re, X_im, Y_re, Y_im)
-
-    @staticmethod
-    def backward(ctx,grad_Z_re, grad_Z_im):
-        X_re,X_im,Y_re,Y_im = ctx.saved_tensors
-        return ComplexMultiply_backward(X_re,X_im,Y_re,Y_im, grad_Z_re, grad_Z_im)
-
-class CompactBilinearPoolingFn(Function):
-
-    @staticmethod
-    def forward(ctx, h1, s1, h2, s2, output_size, x, y, force_cpu_scatter_add=False):
-        ctx.save_for_backward(h1,s1,h2,s2,x,y)
-        ctx.x_size = tuple(x.size())
-        ctx.y_size = tuple(y.size())
-        ctx.force_cpu_scatter_add = force_cpu_scatter_add
-        ctx.output_size = output_size
-
-        # Compute the count sketch of each input
-        px = CountSketchFn_forward(h1, s1, output_size, x, force_cpu_scatter_add)
-        fx = torch.rfft(px,1)
-        re_fx = fx.select(-1, 0)
-        im_fx = fx.select(-1, 1)
-        del px
-        py = CountSketchFn_forward(h2, s2, output_size, y, force_cpu_scatter_add)
-        fy = torch.rfft(py,1)
-        re_fy = fy.select(-1,0)
-        im_fy = fy.select(-1,1)
-        del py
-
-        # Convolution of the two sketch using an FFT.
-        # Compute the FFT of each sketch
-
-
-        # Complex multiplication
-        re_prod, im_prod = ComplexMultiply_forward(re_fx,im_fx,re_fy,im_fy)
-
-        # Back to real domain
-        # The imaginary part should be zero's
-        re = torch.irfft(torch.stack((re_prod, im_prod), re_prod.dim()), 1, signal_sizes=(output_size,))
-
-        return re
-
-    @staticmethod
-    def backward(ctx,grad_output):
-        h1,s1,h2,s2,x,y = ctx.saved_tensors
-
-        # Recompute part of the forward pass to get the input to the complex product
-        # Compute the count sketch of each input
-        px = CountSketchFn_forward(h1, s1, ctx.output_size, x, ctx.force_cpu_scatter_add)
-        py = CountSketchFn_forward(h2, s2, ctx.output_size, y, ctx.force_cpu_scatter_add)
-
-        # Then convert the output to Fourier domain
-        grad_output = grad_output.contiguous()
-        grad_prod = torch.rfft(grad_output, 1)
-        grad_re_prod = grad_prod.select(-1, 0)
-        grad_im_prod = grad_prod.select(-1, 1)
-
-        # Compute the gradient of x first then y
-        
-        # Gradient of x
-        # Recompute fy
-        fy = torch.rfft(py,1)
-        re_fy = fy.select(-1,0)
-        im_fy = fy.select(-1,1)
-        del py
-        # Compute the gradient of fx, then back to temporal space
-        grad_re_fx = torch.addcmul(grad_re_prod * re_fy,  1, grad_im_prod, im_fy)
-        grad_im_fx = torch.addcmul(grad_im_prod * re_fy, -1, grad_re_prod, im_fy)
-        grad_fx = torch.irfft(torch.stack((grad_re_fx,grad_im_fx), grad_re_fx.dim()), 1, signal_sizes=(ctx.output_size,))
-        # Finally compute the gradient of x
-        grad_x = CountSketchFn_backward(h1, s1, ctx.x_size, grad_fx)
-        del re_fy,im_fy,grad_re_fx,grad_im_fx,grad_fx
-
-        # Gradient of y
-        # Recompute fx
-        fx = torch.rfft(px,1)
-        re_fx = fx.select(-1, 0)
-        im_fx = fx.select(-1, 1)
-        del px
-        # Compute the gradient of fy, then back to temporal space
-        grad_re_fy = torch.addcmul(grad_re_prod * re_fx,  1, grad_im_prod, im_fx)
-        grad_im_fy = torch.addcmul(grad_im_prod * re_fx, -1, grad_re_prod, im_fx)
-        grad_fy = torch.irfft(torch.stack((grad_re_fy,grad_im_fy), grad_re_fy.dim()), 1, signal_sizes=(ctx.output_size,))
-        # Finally compute the gradient of y
-        grad_y = CountSketchFn_backward(h2, s2, ctx.y_size, grad_fy)
-        del re_fx,im_fx,grad_re_fy,grad_im_fy,grad_fy
-
-        return None, None, None, None, None, grad_x, grad_y, None
 
 class CompactBilinearPooling(nn.Module):
-    r"""Compute the compact bilinear pooling between two input array x and y
-    .. math::
-        out = \Psi (x,h_1,s_1) \ast \Psi (y,h_2,s_2)
-    Args:
-        input_size1 (int): Number of channels in the first input array
-        input_size2 (int): Number of channels in the second input array
-        output_size (int): Number of channels in the output array
-        h1 (array, optional): Optional array of size input_size of indices in the range [0,output_size]
-        s1 (array, optional): Optional array of size input_size of -1 and 1.
-        h2 (array, optional): Optional array of size input_size of indices in the range [0,output_size]
-        s2 (array, optional): Optional array of size input_size of -1 and 1.
-        force_cpu_scatter_add (boolean, optional): Force the scatter_add operation to run on CPU for testing purposes
-    .. note::
-        If h1, s1, s2, h2 are None, they will be automatically be generated using LongTensor.random_.
-    Shape:
-        - Input 1: (...,input_size1)
-        - Input 2: (...,input_size2)
-        - Output: (...,output_size)
-    References:
-        Yang Gao et al. "Compact Bilinear Pooling" in Proceedings of IEEE Conference on Computer Vision and Pattern Recognition (2016).
-        Akira Fukui et al. "Multimodal Compact Bilinear Pooling for Visual Question Answering and Visual Grounding", arXiv:1606.01847 (2016).
     """
-    def __init__(self, input1_size, input2_size, output_size, h1 = None, s1 = None, h2 = None, s2 = None, force_cpu_scatter_add=False):
+    Compute compact bilinear pooling over two bottom inputs.
+    Args:
+        output_dim: output dimension for compact bilinear pooling.
+        sum_pool: (Optional) If True, sum the output along height and width
+                  dimensions and return output shape [batch_size, output_dim].
+                  Otherwise return [batch_size, height, width, output_dim].
+                  Default: True.
+        rand_h_1: (Optional) an 1D numpy array containing indices in interval
+                  `[0, output_dim)`. Automatically generated from `seed_h_1`
+                  if is None.
+        rand_s_1: (Optional) an 1D numpy array of 1 and -1, having the same shape
+                  as `rand_h_1`. Automatically generated from `seed_s_1` if is
+                  None.
+        rand_h_2: (Optional) an 1D numpy array containing indices in interval
+                  `[0, output_dim)`. Automatically generated from `seed_h_2`
+                  if is None.
+        rand_s_2: (Optional) an 1D numpy array of 1 and -1, having the same shape
+                  as `rand_h_2`. Automatically generated from `seed_s_2` if is
+                  None.
+    """
+
+    def __init__(self, input_dim1, input_dim2, output_dim,
+                 sum_pool=True, cuda=True,
+                 rand_h_1=None, rand_s_1=None, rand_h_2=None, rand_s_2=None):
         super(CompactBilinearPooling, self).__init__()
-        self.add_module('sketch1', CountSketch(input1_size, output_size, h1, s1))
-        self.add_module('sketch2', CountSketch(input2_size, output_size, h2, s2))
-        self.output_size = output_size
-        self.force_cpu_scatter_add = force_cpu_scatter_add
+        self.input_dim1 = input_dim1
+        self.input_dim2 = input_dim2
+        self.output_dim = output_dim
+        self.sum_pool = sum_pool
 
-    def forward(self, x, y = None):
-        if y is None:
-            y = x
+        if rand_h_1 is None:
+            np.random.seed(1)
+            rand_h_1 = np.random.randint(output_dim, size=self.input_dim1)
+        if rand_s_1 is None:
+            np.random.seed(3)
+            rand_s_1 = 2 * np.random.randint(2, size=self.input_dim1) - 1
 
-        return CompactBilinearPoolingFn.apply(self.sketch1.h, self.sketch1.s, self.sketch2.h, self.sketch2.s, self.output_size, x, y, self.force_cpu_scatter_add)
+        self.sparse_sketch_matrix1 = nn.Parameter(self.generate_sketch_matrix(
+            rand_h_1, rand_s_1, self.output_dim), requires_grad=False)
 
+        if rand_h_2 is None:
+            np.random.seed(5)
+            rand_h_2 = np.random.randint(output_dim, size=self.input_dim2)
+        if rand_s_2 is None:
+            np.random.seed(7)
+            rand_s_2 = 2 * np.random.randint(2, size=self.input_dim2) - 1
+
+        self.sparse_sketch_matrix2 = nn.Parameter(self.generate_sketch_matrix(
+            rand_h_2, rand_s_2, self.output_dim), requires_grad=False)
+
+        if cuda:
+            self.sparse_sketch_matrix1 = self.sparse_sketch_matrix1
+            self.sparse_sketch_matrix2 = self.sparse_sketch_matrix2
+
+    def forward(self, bottom1, bottom2):
+        assert bottom1.size(1) == self.input_dim1 and \
+            bottom2.size(1) == self.input_dim2
+
+        batch_size, _, height, width = bottom1.size()
+
+        bottom1_flat = bottom1.permute(0, 2, 3, 1).contiguous().view(-1, self.input_dim1)
+        bottom2_flat = bottom2.permute(0, 2, 3, 1).contiguous().view(-1, self.input_dim2)
+
+        sketch_1 = bottom1_flat.mm(self.sparse_sketch_matrix1)
+        sketch_2 = bottom2_flat.mm(self.sparse_sketch_matrix2)
+
+        fft1 = torch.fft.fft(torch.cat((sketch_1.unsqueeze(-1), torch.zeros(sketch_1.size()).unsqueeze(-1)), -1), 1)
+        fft2 = torch.fft.fft(torch.cat((sketch_2.unsqueeze(-1), torch.zeros(sketch_2.size()).unsqueeze(-1)), -1), 1)
+
+        fft1_real = fft1[..., 0]
+        fft1_imag = fft1[..., 1]
+        fft2_real = fft2[..., 0]
+        fft2_imag = fft2[..., 1]
+
+        temp_rr, temp_ii = fft1_real.mul(fft2_real), fft1_imag.mul(fft2_imag)
+        temp_ri, temp_ir = fft1_real.mul(fft2_imag), fft1_imag.mul(fft2_real)
+        fft_product_real = temp_rr - temp_ii
+        fft_product_imag = temp_ri + temp_ir
+
+        cbp_flat = torch.ifft(torch.cat((fft_product_real.unsqueeze(-1), fft_product_imag.unsqueeze(-1)), -1), 1)
+        cbp_flat = cbp_flat[..., 0]
+
+        cbp = cbp_flat.view(batch_size, height, width, self.output_dim)*self.output_dim
+
+        if self.sum_pool:
+            cbp = cbp.sum(dim=1).sum(dim=1)
+        else:
+            cbp = cbp.permute(0,3,1,2)
+
+        return cbp
+
+    @staticmethod
+    def generate_sketch_matrix(rand_h, rand_s, output_dim):
+        """
+        Return a sparse matrix used for tensor sketch operation in compact bilinear
+        pooling
+        Args:
+            rand_h: an 1D numpy array containing indices in interval `[0, output_dim)`.
+            rand_s: an 1D numpy array of 1 and -1, having the same shape as `rand_h`.
+            output_dim: the output dimensions of compact bilinear pooling.
+        Returns:
+            a sparse matrix of shape [input_dim, output_dim] for tensor sketch.
+        """
+
+        # Generate a sparse matrix for tensor count sketch
+        rand_h = rand_h.astype(np.int64)
+        rand_s = rand_s.astype(np.float32)
+        assert(rand_h.ndim == 1 and rand_s.ndim ==
+               1 and len(rand_h) == len(rand_s))
+        assert(np.all(rand_h >= 0) and np.all(rand_h < output_dim))
+
+        input_dim = len(rand_h)
+        indices = np.concatenate((np.arange(input_dim)[..., np.newaxis],
+                                  rand_h[..., np.newaxis]), axis=1)
+        indices = torch.from_numpy(indices)
+        rand_s = torch.from_numpy(rand_s)
+        sparse_sketch_matrix = torch.sparse.FloatTensor(
+            indices.t(), rand_s, torch.Size([input_dim, output_dim]))
+        return sparse_sketch_matrix.to_dense()
 
 
 if __name__ == '__main__':
 
-    input_size = 2048
-    output_size = 16000
-    mcb = CompactBilinearPooling(input_size, input_size, output_size)
-    x = torch.rand(4,input_size)
-    y = torch.rand(4,input_size)
+    bottom1 = Variable(torch.randn(128, 512, 14, 14))
+    bottom2 = Variable(torch.randn(128, 512, 14, 14))
 
-    z = mcb(x,y)
-        
+    layer = CompactBilinearPooling(512, 512, 8000)
+    layer.train()
+
+    out = layer(bottom1, bottom2)

@@ -51,6 +51,7 @@ BASE-DL主要构建一个基本的深度学习框架
 |      pcb_lstm- occludedreid       |  Version 362   | 92.9  |     52.1     |
 |                ffm                |  Version 364   | 85.4  |     58.0     |
 |                ffm                |  Version 366   | 84.8  |     63.0     |
-|           ffm v278最优            |  Version 366   |       |              |
-
+|          ffm (v278 best)          |  Version 366   | 84.8  |     66.9     |
+|            ffm (bs120)            |  Version 368   |       |     64.5     |
+|            ffm (bs128)            |  Version 369   |       |          |
 
