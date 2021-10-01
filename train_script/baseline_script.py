@@ -189,12 +189,12 @@ def train():
             CMC, mAP = test(query_loader, gallery_loader)
             print_test_infomation(epoch, CMC, mAP, curve, logger)
 
-        # test other dataset
-        if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
-            # test current datset-------------------------------------
-            torch.cuda.empty_cache()
-            CMC, mAP = test(query_or_loader, gallery_or_loader)
-            print_other_test_infomation(epoch, CMC, mAP, curve, logger)
+        # # test other dataset
+        # if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
+        #     # test current datset-------------------------------------
+        #     torch.cuda.empty_cache()
+        #     CMC, mAP = test(query_or_loader, gallery_or_loader)
+        #     print_other_test_infomation(epoch, CMC, mAP, curve, logger)
 
     # Save the loss curve
     curve.save_curve()
