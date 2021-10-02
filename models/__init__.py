@@ -1,8 +1,14 @@
-# from .cnn import *
-# from .Resnet18Custom import Resnet_Classification
-# from .Resnet_pcb import Resnet_pcb
-# from .Resnet_pcb_2branch import Resnet_pcb_2branch
-# from .Resnet_pcb_3branch import Resnet_pcb_3branch
+# encoding: utf-8
+"""
+@author:  sherlock
+@contact: sherlockliao01@gmail.com
+"""
+
+from .baseline import Baseline
 
 
-
+def build_model(cfg, num_classes):
+    # if cfg.MODEL.NAME == 'resnet50':
+    #     model = Baseline(num_classes, cfg.MODEL.LAST_STRIDE, cfg.MODEL.PRETRAIN_PATH, cfg.MODEL.NECK, cfg.TEST.NECK_FEAT)
+    model = Baseline(num_classes, cfg.MODEL.LAST_STRIDE, cfg.MODEL.PRETRAIN_PATH, cfg.MODEL.NECK, cfg.TEST.NECK_FEAT, cfg.MODEL.NAME, cfg.MODEL.PRETRAIN_CHOICE)
+    return model
