@@ -41,8 +41,8 @@ parser.add_argument("--num_epochs", type=int, default=2)
 parser.add_argument("--pretrain_dir", type=str, default="checkpoints/person_reid/")
 
 # other
-parser.add_argument("--img_height", type=int, default=384)
-parser.add_argument("--img_width", type=int, default=128)
+parser.add_argument("--img_height", type=int, default=4)
+parser.add_argument("--img_width", type=int, default=2)
 # print epoch iter
 parser.add_argument("--epoch_train_print", type=int, default=1)
 parser.add_argument("--epoch_test_print", type=int, default=1)
@@ -81,12 +81,12 @@ curve = Draw_Curve(save_dir_path)
 # data ============================================================================================================
 # data Augumentation
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
-(
-    train_or_loader,
-    query_or_loader,
-    gallery_or_loader,
-    num_or_classes,
-) = getOccludedreidData(data_dir=opt.test_data_dir, opt=opt)
+# (
+#     train_or_loader,
+#     query_or_loader,
+#     gallery_or_loader,
+#     num_or_classes,
+# ) = getOccludedreidData(data_dir=opt.test_data_dir, opt=opt)
 
 
 # model ============================================================================================================
@@ -189,7 +189,7 @@ def train():
             CMC, mAP = test(query_loader, gallery_loader)
             print_test_infomation(epoch, CMC, mAP, curve, logger)
 
-        # # test other dataset
+        # test other dataset
         # if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
         #     # test current datset-------------------------------------
         #     torch.cuda.empty_cache()

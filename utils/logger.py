@@ -87,7 +87,7 @@ class Draw_Curve:
             )
             self._plot_max_point(self.ax1, self.y_test["mAP"])
 
-
+        if len(self.y_other_test["top1"]) > 0:
             # other dataset of top1和mAP的曲线
             self.ax1.plot(
                 self.x_epoch_test,
