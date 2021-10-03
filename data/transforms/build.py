@@ -41,7 +41,7 @@ def build_transforms(opt, is_train=True):
         # transform = T.Compose(
         #     [T.Resize(T_image_size), T.ToTensor(), normalize_transform]
         # )
-        transforms = T.Compose(
+        transform = T.Compose(
             [
                 T.Resize(T_image_size, interpolation=3),
                 T.ToTensor(),
