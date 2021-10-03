@@ -8,21 +8,16 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from data.build import make_data_loader
-from evaluators.distance import cosine_dist
-from evaluators.feature_extractor import feature_extractor
-from evaluators.rank import compute_AP
+from evaluators import distance, feature_extractor, rank
 from loss.baselineloss import CenterLoss, Softmax_Triplet_loss
 from models.baseline import Baseline
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import network_module
-from utils.print_infomation import (
-    print_options,
-    print_train_infomation,
-    print_other_test_infomation,
-    print_test_infomation,
-)
-from utils.logger import Logger
 from utils.draw_curve import Draw_Curve
+from utils.logger import Logger
+from utils.print_infomation import (print_options, print_other_test_infomation,
+                                    print_test_infomation,
+                                    print_train_infomation)
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -35,15 +30,20 @@ parser.add_argument(
     type=str,
     default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15_reduce",
 )
+parser.add_argument(
+    "--test_data_dir", type=str, default="./datasets/Occluded_REID_reduce"
+)
 # parser.add_a
-parser.add_argument("--batch_size", default=20, type=int)
+parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)
 # train
 parser.add_argument("--num_epochs", type=int, default=2)
+parser.add_argument("--pretrain_dir", type=str, default="checkpoints/person_reid/")
+
 # other
-parser.add_argument("--img_height", type=int, default=4)
-parser.add_argument("--img_width", type=int, default=2)
+parser.add_argument("--img_height", type=int, default=2)
+parser.add_argument("--img_width", type=int, default=1)
 # print epoch iter
 parser.add_argument("--epoch_train_print", type=int, default=1)
 parser.add_argument("--epoch_test_print", type=int, default=1)
@@ -85,6 +85,8 @@ train_loader, query_loader, gallery_loader, num_classes = make_data_loader(
 # model ============================================================================================================
 model = Baseline(num_classes)
 model = model.to(device)
+network_module.load_network(model, opt.pretrain_dir)
+
 
 # criterion ============================================================================================================
 use_gpu = False
@@ -166,7 +168,7 @@ def train():
         if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
-            CMC, mAP = test()
+            CMC, mAP = test(query_loader, gallery_loader)
 
             print_test_infomation(epoch, CMC, mAP, curve, logger)
 
@@ -179,14 +181,14 @@ def train():
 
 
 @torch.no_grad()
-def test(normalize_feature=True):
+def test(q_loader, g_loader, normalize_feature=True):
     model.eval()
 
     # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
-    qf, q_pids, q_camids = feature_extractor(query_loader, model, device)
+    qf, q_pids, q_camids = feature_extractor.feature_extract(q_loader, model, device)
 
     # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
-    gf, g_pids, g_camids = feature_extractor(gallery_loader, model, device)
+    gf, g_pids, g_camids = feature_extractor.feature_extract(g_loader, model, device)
 
     # normalize_feature------------------------------------------------------------------------------
     if normalize_feature:
@@ -195,22 +197,11 @@ def test(normalize_feature=True):
         gf = F.normalize(gf, p=2, dim=1)
 
     # Computing distance matrix------------------------------------------------------------------------
-    # print("Computing distance matrix with metric={} ...".format(dist_metric))
-    qf = np.array(qf.cpu())
-    gf = np.array(gf.cpu())
-    dist = cosine_dist(qf, gf)
-    rank_results = np.argsort(dist)[:, ::-1]
+    _, rank_results = distance.compute_distance_matrix(qf, gf)
 
     # Computing CMC and mAP------------------------------------------------------------------------
-    # print("Computing CMC and mAP ...")
-    APs, CMC = [], []
-    for _, data in enumerate(zip(rank_results, q_camids, q_pids)):
-        a_rank, query_camid, query_pid = data
-        ap, cmc = compute_AP(a_rank, query_camid, query_pid, g_camids, g_pids)
-        APs.append(ap), CMC.append(cmc)
-    MAP = np.array(APs).mean()
-    min_len = min([len(cmc) for cmc in CMC])
-    CMC = [cmc[:min_len] for cmc in CMC]
-    CMC = np.mean(np.array(CMC), axis=0)
+    CMC, MAP = rank.eval_market1501(rank_results, q_camids, q_pids, g_camids, g_pids)
+
+    return CMC, MAP
 
     return CMC, MAP

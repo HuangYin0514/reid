@@ -15,7 +15,7 @@ def _extract_features(model, input):
     return model(input)
 
 
-def feature_extractor(data_loader, model, device):
+def feature_extract(data_loader, model, device):
     data_f, data_pids, data_camids = (
         [],
         [],

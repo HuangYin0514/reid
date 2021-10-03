@@ -54,5 +54,5 @@ BASE-DL主要构建一个基本的深度学习框架
 |       ffm(bs60) (v278 best)       |  Version 366   | 84.8  |     66.9     |
 |            ffm (bs120)            |  Version 368   |       |     64.5     |
 |            ffm (bs128)            |  Version 369   |       |     66.4     |
-|             baseline              |  Version 371   |  93.9     |              |
+|             baseline              |  Version 371   | 93.9  |              |
 
