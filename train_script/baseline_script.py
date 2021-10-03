@@ -33,7 +33,7 @@ parser.add_argument("--name", type=str, default="person_reid")
 parser.add_argument(
     "--data_dir",
     type=str,
-    default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15",
+    default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15_reduce",
 )
 # parser.add_a
 parser.add_argument("--batch_size", default=20, type=int)
@@ -131,7 +131,6 @@ def train():
         model.train()
 
         running_loss = 0.0
-        acc = 0.0
         for inputs, labels in train_loader:
             inputs, labels = inputs.to(device), labels.to(device)
             # net ---------------------
