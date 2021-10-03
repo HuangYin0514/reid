@@ -7,6 +7,7 @@ from re import I
 import numpy as np
 import torch
 import torch.nn.functional as F
+from data.build import make_data_loader
 from evaluators.distance import cosine_dist
 from evaluators.feature_extractor import feature_extractor
 from evaluators.rank import compute_AP
@@ -30,7 +31,9 @@ parser.add_argument("--checkpoints_dir", type=str, default="./checkpoints")
 parser.add_argument("--name", type=str, default="person_reid")
 # data
 parser.add_argument(
-    "--data_dir", type=str, default="./datasets/Market-1501-v15.09.15_reduce"
+    "--data_dir",
+    type=str,
+    default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15",
 )
 # parser.add_a
 parser.add_argument("--batch_size", default=20, type=int)
@@ -75,7 +78,9 @@ curve = Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
 # data Augumentation
-train_loader, query_loader, gallery_loader, num_classes = getData(opt)
+train_loader, query_loader, gallery_loader, num_classes = make_data_loader(
+    opt, "market1501", opt.data_dir
+)
 
 # model ============================================================================================================
 model = Baseline(num_classes)
@@ -133,7 +138,6 @@ def train():
             optimizer.zero_grad()
 
             score, feat = model(inputs)
-
 
             loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
 

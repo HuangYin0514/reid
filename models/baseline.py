@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .model_utils.resnet50 import resnet50
+from .backbones.resnet50 import resnet50
 from .model_utils.init_param import weights_init_classifier, weights_init_kaiming
 
 

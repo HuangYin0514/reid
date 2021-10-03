@@ -1,7 +1,7 @@
 
 
 def pcb_script():
-    from train_script.baseline import train
+    from train_script.baseline_script import train
 
     return train
 

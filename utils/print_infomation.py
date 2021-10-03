@@ -1,5 +1,5 @@
 import os
-from common import mkdirs
+from .common import mkdirs
 import time
 
 

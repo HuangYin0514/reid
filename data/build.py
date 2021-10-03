@@ -44,12 +44,21 @@ def make_data_loader(opt, dataset_name, data_path, sampler="softmax"):
             collate_fn=train_collate_fn,
         )
 
-    val_set = ImageDataset(dataset.query + dataset.gallery, val_transforms)
-    val_loader = DataLoader(
-        val_set,
+    query_set = ImageDataset(dataset.query , val_transforms)
+    query_loader = DataLoader(
+        query_set,
         batch_size=opt.test_batch_size,
         shuffle=False,
         num_workers=num_workers,
         collate_fn=val_collate_fn,
     )
-    return train_loader, val_loader, len(dataset.query), num_classes
+
+    gallery_set = ImageDataset(dataset.gallery, val_transforms)
+    gallery_loader = DataLoader(
+        gallery_set,
+        batch_size=opt.test_batch_size,
+        shuffle=False,
+        num_workers=num_workers,
+        collate_fn=val_collate_fn,
+    )
+    return train_loader, query_loader, gallery_loader, num_classes
