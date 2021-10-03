@@ -11,7 +11,6 @@ import zipfile
 
 import os.path as osp
 
-from utils.iotools import mkdir_if_missing
 from .bases import BaseImageDataset
 
 
@@ -63,7 +62,6 @@ class DukeMTMCreID(BaseImageDataset):
             return
 
         print("Creating directory {}".format(self.dataset_dir))
-        mkdir_if_missing(self.dataset_dir)
         fpath = osp.join(self.dataset_dir, osp.basename(self.dataset_url))
 
         print("Downloading DukeMTMC-reID dataset")
