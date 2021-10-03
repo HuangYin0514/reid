@@ -17,20 +17,36 @@ def build_transforms(opt, is_train=True):
 
     normalize_transform = T.Normalize(mean=T_mean, std=T_std)
     if is_train:
+        # transform = T.Compose(
+        #     [
+        #         T.Resize(T_image_size),
+        #         T.RandomHorizontalFlip(p=0.5),
+        #         T.Pad(10),
+        #         T.RandomCrop(T_image_size),
+        #         T.ToTensor(),
+        #         normalize_transform,
+        #         RandomErasing(probability=0.5, mean=T_mean),
+        #     ]
+        # )
         transform = T.Compose(
             [
-                T.Resize(T_image_size),
-                T.RandomHorizontalFlip(p=0.5),
-                T.Pad(10),
-                T.RandomCrop(T_image_size),
+                T.Resize(T_image_size, interpolation=3),
+                T.RandomHorizontalFlip(),
                 T.ToTensor(),
                 normalize_transform,
                 RandomErasing(probability=0.5, mean=T_mean),
             ]
         )
     else:
-        transform = T.Compose(
-            [T.Resize(T_image_size), T.ToTensor(), normalize_transform]
+        # transform = T.Compose(
+        #     [T.Resize(T_image_size), T.ToTensor(), normalize_transform]
+        # )
+        transforms = T.Compose(
+            [
+                T.Resize(T_image_size, interpolation=3),
+                T.ToTensor(),
+                normalize_transform,
+            ]
         )
 
     return transform

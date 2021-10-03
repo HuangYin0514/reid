@@ -62,6 +62,7 @@ torch.cuda.manual_seed_all(random_seed)
 torch.cuda.manual_seed(random_seed)
 np.random.seed(random_seed)  # Numpy module.
 random.seed(random_seed)  # Python random module.
+
 torch.backends.cudnn.deterministic = True
 # speed up compution
 torch.backends.cudnn.benchmark = True
@@ -204,4 +205,3 @@ def test(q_loader, g_loader, normalize_feature=True):
 
     return CMC, MAP
 
-    return CMC, MAP
