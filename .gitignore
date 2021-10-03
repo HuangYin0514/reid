@@ -1,0 +1,16 @@
+# python 生成的编译文件
+*.pyc
+__pycache__/
+
+# 数据集文件
+datasets/
+
+# 生成的文件
+checkpoints/
+*.mat
+
+# 配置文件
+.vscode/
+.ipynb_checkpoints/
+.DS_Store
+
