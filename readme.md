@@ -19,8 +19,8 @@ BASE-DL主要构建一个基本的深度学习框架
 
 ## 实验结果
 
-|               模型                | kaggle version |  r@1  | occludedreid |
-| :-------------------------------: | :------------: | :---: | :----------: |
+|               模型                | kaggle version |  r@1  | occludedreid |                 备注                 |
+| :-------------------------------: | :------------: | :---: | :----------: | :----------------------------------: |
 |        Resnet_pcb_3branch         |  Version 321   | 93.1  |
 |            Resnet_pcb             |  Version 322   | 92.81 |
 |         Resnet_pcb_bilstm         |  Version 324   | 93.3  |
@@ -56,7 +56,6 @@ BASE-DL主要构建一个基本的深度学习框架
 |            ffm (bs128)            |  Version 369   |       |     66.4     |
 |             baseline              |  Version 371   | 93.9  |              |
 |          baseline_apnet           |  Version 379   | 94.2  |              |
-|             baseline              |  Version 380   | 94.1  |              |
-|        baseline (ori data)        |  Version 383   |       |              |
+|        baseline (ori data)        |  Version 383   | 94.1  |              | 精度上不去的原因是因为数据 transform |
 
 
