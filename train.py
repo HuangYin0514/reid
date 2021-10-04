@@ -14,6 +14,8 @@ def baseline_apnet_scrip():
 
 if __name__ == "__main__":
 
-    train = pcb_script()
+    train = baseline_apnet_scrip()
+    print("="*40)
     print("运行中。。。" + train.__globals__["__name__"])
+    print("="*40)
     train()
