@@ -9,7 +9,7 @@ import torch
 import torch.nn.functional as F
 from data.getDataLoader import getData
 from evaluators import distance, feature_extractor, rank
-from loss.baselineloss import CenterLoss, Softmax_Triplet_loss
+from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from models.baseline import Baseline
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import network_module

@@ -9,15 +9,13 @@ import torch
 import torch.nn.functional as F
 from data.getDataLoader import getData
 from evaluators import distance, feature_extractor, rank
-from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
-from models.baseline_apnet import baseline_apnet
-from optim.WarmupMultiStepLR import WarmupMultiStepLR
+from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
+from models.pcb import pcb
 from utils import network_module
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
 from utils.print_infomation import (
     print_options,
-    print_other_test_infomation,
     print_test_infomation,
     print_train_infomation,
 )
@@ -85,47 +83,32 @@ curve = Draw_Curve(save_dir_path)
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
-model = baseline_apnet(num_classes)
+model = pcb(num_classes)
 model = model.to(device)
 network_module.load_network(model, opt.pretrain_dir)
 
-
 # criterion ============================================================================================================
-use_gpu = False
-if device == "cuda":
-    use_gpu = True
+criterion = F.cross_entropy
+ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+triplet_loss = TripletLoss(margin=0.3)
 
-
-criterion = Softmax_Triplet_loss(
-    num_class=num_classes,
-    margin=0.3,
-    epsilon=0.1,
-    use_gpu=use_gpu,
-)
-
-center_loss = CenterLoss(
-    num_classes=num_classes,
-    feature_dim=2048,
-    use_gpu=use_gpu,
-)
 # optimizer ============================================================================================================
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=0.00035,
-    weight_decay=0.0005,
+# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+lr = 0.1
+base_param_ids = set(map(id, model.backbone.parameters()))
+new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+param_groups = [
+    {"params": model.backbone.parameters(), "lr": lr / 10},
+    {"params": new_params, "lr": lr},
+]
+optimizer = torch.optim.SGD(
+    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
 )
-
-optimizer_centerloss = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 
 # # scheduler ============================================================================================================
-scheduler = WarmupMultiStepLR(
-    optimizer,
-    milestones=[40, 70],
-    gamma=0.1,
-    warmup_factor=0.01,
-    warmup_iters=10,
-    warmup_method="linear",
-)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+
 
 # Training and test ============================================================================================================
 def train():
@@ -140,14 +123,18 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            score, feat = model(inputs)
+            parts_scores = model(inputs)
 
-            loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
+            # parts loss-------------------------------------------------
+            part_loss = 0
+            for logits in parts_scores:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss += stripe_loss
+
+            loss = part_loss
 
             loss.backward()
-
             optimizer.step()
-            optimizer_centerloss.step()
             # --------------------------
 
             running_loss += loss.item() * inputs.size(0)
