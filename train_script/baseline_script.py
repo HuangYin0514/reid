@@ -7,7 +7,7 @@ from re import I
 import numpy as np
 import torch
 import torch.nn.functional as F
-from data.build import make_data_loader
+from data.getDataLoader import getData
 from evaluators import distance, feature_extractor, rank
 from loss.baselineloss import CenterLoss, Softmax_Triplet_loss
 from models.baseline import Baseline
@@ -15,9 +15,12 @@ from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import network_module
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
-from utils.print_infomation import (print_options, print_other_test_infomation,
-                                    print_test_infomation,
-                                    print_train_infomation)
+from utils.print_infomation import (
+    print_options,
+    print_other_test_infomation,
+    print_test_infomation,
+    print_train_infomation,
+)
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -79,9 +82,7 @@ curve = Draw_Curve(save_dir_path)
 
 # data ============================================================================================================
 # data Augumentation
-train_loader, query_loader, gallery_loader, num_classes = make_data_loader(
-    opt, "market1501", opt.data_dir
-)
+train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
 model = Baseline(num_classes)
@@ -204,4 +205,3 @@ def test(q_loader, g_loader, normalize_feature=True):
     CMC, MAP = rank.eval_market1501(rank_results, q_camids, q_pids, g_camids, g_pids)
 
     return CMC, MAP
-
