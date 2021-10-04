@@ -57,4 +57,6 @@ BASE-DL主要构建一个基本的深度学习框架
 |             baseline              |  Version 371   | 93.9  |              |
 |          baseline_apnet           |  Version 379   | 94.2  |              |
 |             baseline              |  Version 380   | 94.1  |              |
+|        baseline (ori data)        |  Version 383   |       |              |
+
 
