@@ -11,21 +11,24 @@ def baseline_apnet_scrip():
 
     return train
 
+
 # pcb
 def pcb_script():
     from train_script.pcb_script import train
 
     return train
 
+
 def pcb_apnet_script():
     from train_script.pcb_apnet_scrip import train
 
     return train
 
+
 if __name__ == "__main__":
 
-    train = pcb_apnet_script()
-    print("="*40)
+    train = baseline_apnet_scrip()
+    print("=" * 40)
     print("运行中。。。" + train.__globals__["__name__"])
-    print("="*40)
+    print("=" * 40)
     train()
