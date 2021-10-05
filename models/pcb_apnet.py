@@ -100,31 +100,26 @@ class Resnet_Backbone(nn.Module):
 
         # apnet模块
         self.level = 2
-        self.att1 = SELayer(64, 8)
         self.att2 = SELayer(256, 32)
         self.att3 = SELayer(512, 64)
         self.att4 = SELayer(1024, 128)
         self.att5 = SELayer(2048, 256)
 
-        self.att_s1 = SAMS(64, int(64 / self.level), radix=self.level)
         self.att_s2 = SAMS(256, int(256 / self.level), radix=self.level)
         self.att_s3 = SAMS(512, int(512 / self.level), radix=self.level)
         self.att_s4 = SAMS(1024, int(1024 / self.level), radix=self.level)
         self.att_s5 = SAMS(2048, int(2048 / self.level), radix=self.level)
 
-        self.BN1 = BN2d(64)
         self.BN2 = BN2d(256)
         self.BN3 = BN2d(512)
         self.BN4 = BN2d(1024)
         self.BN5 = BN2d(2048)
 
-        self.att_ss1 = SAMS(64, int(64 / self.level), radix=self.level)
         self.att_ss2 = SAMS(256, int(256 / self.level), radix=self.level)
         self.att_ss3 = SAMS(512, int(512 / self.level), radix=self.level)
         self.att_ss4 = SAMS(1024, int(1024 / self.level), radix=self.level)
         self.att_ss5 = SAMS(2048, int(2048 / self.level), radix=self.level)
 
-        self.BN_1 = BN2d(64)
         self.BN_2 = BN2d(256)
         self.BN_3 = BN2d(512)
         self.BN_4 = BN2d(1024)
@@ -136,12 +131,6 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
 
-        x = self.att_ss1(x)
-        x = self.BN_1(x)
-        x = self.att_s1(x)
-        x = self.BN1(x)
-        y = self.att1(x)
-        x = x * y.expand_as(x)
 
         x = self.resnet_layer1(x)
         x = self.att_ss2(x)
