@@ -8,9 +8,16 @@ def pcb_script():
 # 参考apnet中的模块
 def baseline_apnet_scrip():
     from train_script.baseline_apnet_scrip import train
+
     print("目标精度95.0%。。。")
     return train
 
+# 参考apnet中的模块
+def baseline_apnet_drop_script():
+    from train_script.baseline_apnet_drop_script import train
+
+    print("目标精度95.0%。。。")
+    return train
 
 # pcb
 def pcb_script():
@@ -27,7 +34,7 @@ def pcb_apnet_script():
 
 if __name__ == "__main__":
 
-    train = baseline_apnet_scrip()
+    train = baseline_apnet_drop_script()
     print("=" * 40)
     print("运行中。。。" + train.__globals__["__name__"])
     print("=" * 40)

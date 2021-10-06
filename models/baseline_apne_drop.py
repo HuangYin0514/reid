@@ -79,6 +79,39 @@ class BN2d(nn.Module):
         return self.bottleneck2(x)
 
 
+class DropBlock2D(nn.Module):
+    
+
+    def __init__(self, keep_prob=0.9, block_size=7,beta=0.9):
+        super(DropBlock2D, self).__init__()
+        self.keep_prob = keep_prob
+        self.block_size = block_size
+        self.beta = beta
+    def normalize(self, input):
+        min_c, max_c = input.min(1, keepdim=True)[0], input.max(1, keepdim=True)[0]
+        input_norm = (input - min_c) / (max_c - min_c + 1e-8)
+        return input_norm
+
+    def forward(self, input):
+        if not self.training or self.keep_prob == 1:
+            return input
+        gamma = (1. - self.keep_prob) / self.block_size ** 2
+        for sh in input.shape[2:]:
+            gamma *= sh / (sh - self.block_size + 1)
+        M = torch.bernoulli(torch.ones_like(input) * gamma)
+        Msum = F.conv2d(M,
+                        torch.ones((input.shape[1], 1, self.block_size, self.block_size)).to(device=input.device,
+                                                                                             dtype=input.dtype),
+                        padding=self.block_size // 2,
+                        groups=input.shape[1])
+
+        Msum = (Msum < 1).to(device=input.device, dtype=input.dtype)
+        input2 = input * Msum
+        x_norm = self.normalize(input2)
+        mask = (x_norm > self.beta).float()
+        block_mask = 1 - (mask * x_norm)
+        return input *block_mask
+
 # apnet修改的模块
 class Resnet_Backbone(nn.Module):
     def __init__(self):
@@ -132,19 +165,15 @@ class Resnet_Backbone(nn.Module):
         self.BN_4 = BN2d(1024)
         self.BN_5 = BN2d(2048)
 
+        self.db = DropBlock2D()
+
     def forward(self, x):
         x = self.resnet_conv1(x)
         x = self.resnet_bn1(x)
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
 
-        x = self.att_ss1(x)
-        x = self.BN_1(x)
-        x = self.att_s1(x)
-        x = self.BN1(x)
-        y = self.att1(x)
-        x = x * y.expand_as(x)
-
+      
         x = self.resnet_layer1(x)
         x = self.att_ss2(x)
         x = self.BN_2(x)
@@ -169,6 +198,8 @@ class Resnet_Backbone(nn.Module):
         y = self.att4(x)
         x = x * y.expand_as(x)
 
+        x = self.db(x)
+
         x = self.resnet_layer4(x)
         x = self.att_ss5(x)
         x = self.BN_5(x)
@@ -180,12 +211,12 @@ class Resnet_Backbone(nn.Module):
         return x
 
 
-class baseline_apnet(nn.Module):
+class baseline_apne_drop(nn.Module):
     def __init__(self, num_classes):
 
         self.num_classes = num_classes
 
-        super(baseline_apnet, self).__init__()
+        super(baseline_apne_drop, self).__init__()
 
         # backbone
         self.backbone = Resnet_Backbone()

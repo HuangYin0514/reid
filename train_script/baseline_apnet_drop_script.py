@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from data.getDataLoader import getData
 from evaluators import distance, feature_extractor, rank
 from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
-from models.baseline_apnet import baseline_apnet
+from models.baseline_apne_drop import baseline_apne_drop
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import network_module
 from utils.draw_curve import Draw_Curve
@@ -85,7 +85,7 @@ curve = Draw_Curve(save_dir_path)
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 
 # model ============================================================================================================
-model = baseline_apnet(num_classes)
+model = baseline_apne_drop(num_classes)
 model = model.to(device)
 network_module.load_network(model, opt.pretrain_dir)
 
