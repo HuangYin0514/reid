@@ -198,7 +198,6 @@ class Resnet_Backbone(nn.Module):
         y = self.att4(x)
         x = x * y.expand_as(x)
 
-        x = self.db(x)
 
         x = self.resnet_layer4(x)
         x = self.att_ss5(x)
@@ -207,6 +206,9 @@ class Resnet_Backbone(nn.Module):
         x = self.BN5(x)
         y = self.att5(x)
         x = x * y.expand_as(x)
+
+        x = self.db(x)
+
 
         return x
 

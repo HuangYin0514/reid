@@ -12,7 +12,7 @@ def baseline_apnet_scrip():
     print("目标精度95.0%。。。")
     return train
 
-# 参考apnet中的模块
+# baseline_apnet_drop_script
 def baseline_apnet_drop_script():
     from train_script.baseline_apnet_drop_script import train
 
