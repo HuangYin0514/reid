@@ -165,7 +165,7 @@ class Resnet_Backbone(nn.Module):
         self.BN_4 = BN2d(1024)
         self.BN_5 = BN2d(2048)
 
-        self.db = DropBlock2D()
+        self.db = DropBlock2D(keep_prob=0.5)
 
     def forward(self, x):
         x = self.resnet_conv1(x)
@@ -208,7 +208,6 @@ class Resnet_Backbone(nn.Module):
         x = x * y.expand_as(x)
 
         x = self.db(x)
-
 
         return x
 
