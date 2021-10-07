@@ -165,7 +165,10 @@ class Resnet_Backbone(nn.Module):
         self.BN_4 = BN2d(1024)
         self.BN_5 = BN2d(2048)
 
-        self.db = DropBlock2D(keep_prob=0.5)
+        self.db1 = DropBlock2D(keep_prob=0.9,block_size=1)
+        self.db2 = DropBlock2D(keep_prob=0.9,block_size=1)
+        self.db3 = DropBlock2D(keep_prob=0.9,block_size=3)
+        self.db4 = DropBlock2D(keep_prob=0.9,block_size=5)
 
     def forward(self, x):
         x = self.resnet_conv1(x)
@@ -173,6 +176,8 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
 
+
+        x = self.db1(x)
       
         x = self.resnet_layer1(x)
         x = self.att_ss2(x)
@@ -182,6 +187,9 @@ class Resnet_Backbone(nn.Module):
         y = self.att2(x)
         x = x * y.expand_as(x)
 
+
+        x = self.db2(x)
+
         x = self.resnet_layer2(x)
         x = self.att_ss3(x)
         x = self.BN_3(x)
@@ -189,6 +197,8 @@ class Resnet_Backbone(nn.Module):
         x = self.BN3(x)
         y = self.att3(x)
         x = x * y.expand_as(x)
+
+        x = self.db3(x)
 
         x = self.resnet_layer3(x)
         x = self.att_ss4(x)
@@ -198,6 +208,7 @@ class Resnet_Backbone(nn.Module):
         y = self.att4(x)
         x = x * y.expand_as(x)
 
+        x = self.db3(x)
 
         x = self.resnet_layer4(x)
         x = self.att_ss5(x)
@@ -207,7 +218,7 @@ class Resnet_Backbone(nn.Module):
         y = self.att5(x)
         x = x * y.expand_as(x)
 
-        x = self.db(x)
+        # x = self.db(x)
 
         return x
 
