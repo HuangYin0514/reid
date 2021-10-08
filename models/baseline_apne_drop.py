@@ -177,7 +177,7 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_maxpool(x)
 
 
-        x = self.db1(x)
+        # x = self.db1(x)
       
         x = self.resnet_layer1(x)
         # x = self.att_ss2(x)
