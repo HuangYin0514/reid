@@ -155,7 +155,7 @@ def train():
             loss = (
                 criterion(score, feat, labels)
                 + center_loss(feat, labels) * 0.0005
-                + part_loss
+                + part_loss * 0.1
             )
 
             loss.backward()

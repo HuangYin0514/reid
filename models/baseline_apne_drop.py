@@ -223,6 +223,8 @@ class Resnet_Backbone(nn.Module):
 
         avg_out = torch.cat([avg_y1, avg_y2, avg_y3], dim=1)
 
+
+        
         return x, avg_out
 
 
