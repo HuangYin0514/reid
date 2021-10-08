@@ -80,13 +80,12 @@ class BN2d(nn.Module):
 
 
 class DropBlock2D(nn.Module):
-    
-
-    def __init__(self, keep_prob=0.9, block_size=7,beta=0.9):
+    def __init__(self, keep_prob=0.9, block_size=7, beta=0.9):
         super(DropBlock2D, self).__init__()
         self.keep_prob = keep_prob
         self.block_size = block_size
         self.beta = beta
+
     def normalize(self, input):
         min_c, max_c = input.min(1, keepdim=True)[0], input.max(1, keepdim=True)[0]
         input_norm = (input - min_c) / (max_c - min_c + 1e-8)
@@ -95,22 +94,26 @@ class DropBlock2D(nn.Module):
     def forward(self, input):
         if not self.training or self.keep_prob == 1:
             return input
-        gamma = (1. - self.keep_prob) / self.block_size ** 2
+        gamma = (1.0 - self.keep_prob) / self.block_size ** 2
         for sh in input.shape[2:]:
             gamma *= sh / (sh - self.block_size + 1)
         M = torch.bernoulli(torch.ones_like(input) * gamma)
-        Msum = F.conv2d(M,
-                        torch.ones((input.shape[1], 1, self.block_size, self.block_size)).to(device=input.device,
-                                                                                             dtype=input.dtype),
-                        padding=self.block_size // 2,
-                        groups=input.shape[1])
+        Msum = F.conv2d(
+            M,
+            torch.ones((input.shape[1], 1, self.block_size, self.block_size)).to(
+                device=input.device, dtype=input.dtype
+            ),
+            padding=self.block_size // 2,
+            groups=input.shape[1],
+        )
 
         Msum = (Msum < 1).to(device=input.device, dtype=input.dtype)
         input2 = input * Msum
         x_norm = self.normalize(input2)
         mask = (x_norm > self.beta).float()
         block_mask = 1 - (mask * x_norm)
-        return input *block_mask
+        return input * block_mask
+
 
 # apnet修改的模块
 class Resnet_Backbone(nn.Module):
@@ -165,10 +168,14 @@ class Resnet_Backbone(nn.Module):
         self.BN_4 = BN2d(1024)
         self.BN_5 = BN2d(2048)
 
-        self.db1 = DropBlock2D(keep_prob=0.9,block_size=1)
-        self.db2 = DropBlock2D(keep_prob=0.9,block_size=1)
-        self.db3 = DropBlock2D(keep_prob=0.9,block_size=3)
-        self.db4 = DropBlock2D(keep_prob=0.9,block_size=5)
+        self.db1 = DropBlock2D(keep_prob=0.9, block_size=1)
+        self.db2 = DropBlock2D(keep_prob=0.9, block_size=1)
+        self.db3 = DropBlock2D(keep_prob=0.9, block_size=3)
+        self.db4 = DropBlock2D(keep_prob=0.9, block_size=5)
+
+        self.avgpool1 = nn.AdaptiveAvgPool2d((6, 1))
+        self.avgpool2 = nn.AdaptiveAvgPool2d((6, 1))
+        self.avgpool3 = nn.AdaptiveAvgPool2d((6, 1))
 
     def forward(self, x):
         x = self.resnet_conv1(x)
@@ -176,51 +183,47 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
 
-
-        # x = self.db1(x)
-      
         x = self.resnet_layer1(x)
-        # x = self.att_ss2(x)
-        # x = self.BN_2(x)
-        # x = self.att_s2(x)
-        # x = self.BN2(x)
+        x = self.att_ss2(x)
+        x = self.BN_2(x)
+        x = self.att_s2(x)
+        x = self.BN2(x)
         y = self.att2(x)
         x = x * y.expand_as(x)
 
-
-        # x = self.db2(x)
+        avg_y1 = self.avgpool1(x)
 
         x = self.resnet_layer2(x)
-        # x = self.att_ss3(x)
-        # x = self.BN_3(x)
-        # x = self.att_s3(x)
-        # x = self.BN3(x)
+        x = self.att_ss3(x)
+        x = self.BN_3(x)
+        x = self.att_s3(x)
+        x = self.BN3(x)
         y = self.att3(x)
         x = x * y.expand_as(x)
 
-        # x = self.db3(x)
+        avg_y2 = self.avgpool2(x)
 
         x = self.resnet_layer3(x)
-        # x = self.att_ss4(x)
-        # x = self.BN_4(x)
-        # x = self.att_s4(x)
-        # x = self.BN4(x)
+        x = self.att_ss4(x)
+        x = self.BN_4(x)
+        x = self.att_s4(x)
+        x = self.BN4(x)
         y = self.att4(x)
         x = x * y.expand_as(x)
 
-        # x = self.db3(x)
+        avg_y3 = self.avgpool3(x)
 
         x = self.resnet_layer4(x)
-        # x = self.att_ss5(x)
-        # x = self.BN_5(x)
-        # x = self.att_s5(x)
-        # x = self.BN5(x)
+        x = self.att_ss5(x)
+        x = self.BN_5(x)
+        x = self.att_s5(x)
+        x = self.BN5(x)
         y = self.att5(x)
         x = x * y.expand_as(x)
 
-        # x = self.db(x)
+        avg_out = torch.cat([avg_y1, avg_y2, avg_y3], dim=1)
 
-        return x
+        return x, avg_out
 
 
 class baseline_apne_drop(nn.Module):
@@ -241,18 +244,48 @@ class baseline_apne_drop(nn.Module):
         self.bottleneck.apply(weights_init_kaiming)
         self.classifier.apply(weights_init_classifier)
 
+        # part(pcb）--------------------------------------------------------------------------
+        self.local_conv_list = nn.ModuleList()
+        self.parts = 6
+        for _ in range(self.parts):
+            local_conv = nn.Sequential(
+                nn.Conv1d(1792, 256, kernel_size=1),
+                nn.BatchNorm1d(256),
+                nn.ReLU(inplace=True),
+            )
+            self.local_conv_list.append(local_conv)
+
+        # Classifier for each stripe （parts feature）-------------------------------------
+        self.parts_classifier_list = nn.ModuleList()
+        for _ in range(self.parts):
+            fc = nn.Linear(256, num_classes)
+            nn.init.normal_(fc.weight, std=0.001)
+            nn.init.constant_(fc.bias, 0)
+            self.parts_classifier_list.append(fc)
+
     def forward(self, x):
         batch_size = x.size(0)
 
-        x = self.backbone(x)  # (batch_size, 2048, 16, 8)
+        resnet_features, avg_out = self.backbone(x)  # (batch_size, 2048, 16, 8)
 
         # baseline
-        x = self.avgpool(x)  # (batch_size, 2048, 1, 1)
+        x = self.avgpool(resnet_features)  # (batch_size, 2048, 1, 1)
         x = x.view(batch_size, -1)  # (batch_size, 2048)
         feat = self.bottleneck(x)  # (batch_size, 2048)
 
+        # parts --------------------------------------------------------------------------
+        features_H = []  # contains 6 ([N, 256, 1])
+        for i in range(self.parts):
+            stripe_features_H = self.local_conv_list[i](avg_out[:, :, i, :])
+            features_H.append(stripe_features_H)
+
         if self.training:
             score = self.classifier(feat)  # (batch_size, num_classes)
-            return score, x
+            parts_score_list = [
+                self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
+                for i in range(self.parts)
+            ]  # shape list（[N, C=num_classes]）
+
+            return score, x, parts_score_list
         else:
             return feat

@@ -21,6 +21,7 @@ from utils.print_infomation import (
     print_test_infomation,
     print_train_infomation,
 )
+from loss.pcb_loss import CrossEntropyLabelSmoothLoss
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -108,6 +109,9 @@ center_loss = CenterLoss(
     feature_dim=2048,
     use_gpu=use_gpu,
 )
+
+ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+
 # optimizer ============================================================================================================
 optimizer = torch.optim.Adam(
     model.parameters(),
@@ -140,9 +144,19 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            score, feat = model(inputs)
+            score, feat, parts_score_list = model(inputs)
 
-            loss = criterion(score, feat, labels) + center_loss(feat, labels) * 0.0005
+            # parts loss-------------------------------------------------
+            part_loss = 0
+            for logits in parts_score_list:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss += stripe_loss
+
+            loss = (
+                criterion(score, feat, labels)
+                + center_loss(feat, labels) * 0.0005
+                + part_loss
+            )
 
             loss.backward()
 
