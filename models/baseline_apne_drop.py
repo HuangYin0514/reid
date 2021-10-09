@@ -176,6 +176,7 @@ class Resnet_Backbone(nn.Module):
         self.avgpool1 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool2 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool3 = nn.AdaptiveAvgPool2d((6, 1))
+        self.avgpool4 = nn.AdaptiveAvgPool2d((6, 1))
 
     def forward(self, x):
         x = self.resnet_conv1(x)
@@ -221,10 +222,10 @@ class Resnet_Backbone(nn.Module):
         y = self.att5(x)
         x = x * y.expand_as(x)
 
-        avg_out = torch.cat([avg_y1, avg_y2, avg_y3], dim=1)
+        avg_y4 = self.avgpool4(x)
 
+        avg_out = torch.cat([avg_y1, avg_y2, avg_y3, avg_y4], dim=1)
 
-        
         return x, avg_out
 
 
@@ -251,7 +252,7 @@ class baseline_apne_drop(nn.Module):
         self.parts = 6
         for _ in range(self.parts):
             local_conv = nn.Sequential(
-                nn.Conv1d(1792, 256, kernel_size=1),
+                nn.Conv1d(3840, 256, kernel_size=1),
                 nn.BatchNorm1d(256),
                 nn.ReLU(inplace=True),
             )
