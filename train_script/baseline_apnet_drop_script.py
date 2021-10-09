@@ -144,18 +144,23 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            score, feat, parts_score_list = model(inputs)
+            score, feat, parts_score_list, parts_score_list2 = model(inputs)
 
             # parts loss-------------------------------------------------
             part_loss = 0
             for logits in parts_score_list:
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 part_loss += stripe_loss
+            part_loss2 = 0
+            for logits in parts_score_list2:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss2 += stripe_loss
 
             loss = (
                 criterion(score, feat, labels)
                 + center_loss(feat, labels) * 0.0005
                 + part_loss * 0.1
+                + part_loss2 * 0.1
             )
 
             loss.backward()

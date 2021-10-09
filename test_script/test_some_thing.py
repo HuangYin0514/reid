@@ -7,24 +7,26 @@ class test_model(nn.Module):
     def __init__(self):
         super(test_model, self).__init__()
 
-        width = 3
         self.nums = 3
-
-        self.width = width
-
         convs = []
         bns = []
-        for i in range(self.nums):
-            convs.append(nn.Conv2d(width, width, kernel_size=3, padding=1, bias=False))
-            bns.append(nn.BatchNorm2d(width))
+        for _ in range(self.nums):
+            convs.append(
+                nn.Conv2d(
+                    448,
+                    448,
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                )
+            )
+            bns.append(nn.BatchNorm2d(448))
         self.convs = nn.ModuleList(convs)
         self.bns = nn.ModuleList(bns)
-
-        self.stype = "normal"
         self.relu = nn.ReLU(inplace=True)
 
-    def forward(self, y1, y2, y3, y4):
-        spx = [y1, y2, y3, y4]
+    def forward(self, x):
+        spx = torch.split(x, 448, dim=1)
         for i in range(self.nums):
             if i == 0:
                 sp = spx[i]
@@ -39,11 +41,17 @@ class test_model(nn.Module):
 
         out = torch.cat((out, spx[self.nums]), 1)
 
-        return out
+        ms = torch.split(out, 448, dim=1)
+        m12 = torch.cat([ms[0], ms[1]], dim=1)
+        m34 = torch.cat([ms[2], ms[3]], dim=1)
+
+        m = [m12,m34]
+
+        return m
 
 
 if __name__ == "__main__":
     db2d = test_model()
-    inputs = torch.randn(32, 3, 43, 32)
-    outputs = db2d(inputs, inputs, inputs, inputs)
-    print(outputs.shape)
+    inputs = torch.randn(32, 1792, 6, 1)
+    outputs = db2d(inputs)
+    # print(outputs.shape)

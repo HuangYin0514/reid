@@ -115,6 +115,51 @@ class DropBlock2D(nn.Module):
         return input * block_mask
 
 
+class MFRL(nn.Module):
+    def __init__(self):
+        super(MFRL, self).__init__()
+
+        self.nums = 3
+        convs = []
+        bns = []
+        for _ in range(self.nums):
+            convs.append(
+                nn.Conv2d(
+                    448,
+                    448,
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                )
+            )
+            bns.append(nn.BatchNorm2d(448))
+        self.convs = nn.ModuleList(convs)
+        self.bns = nn.ModuleList(bns)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        spx = torch.split(x, 448, dim=1)
+        for i in range(self.nums):
+            if i == 0:
+                sp = spx[i]
+            else:
+                sp = sp + spx[i]
+            sp = self.convs[i](sp)
+            sp = self.relu(self.bns[i](sp))
+            if i == 0:
+                out = sp
+            else:
+                out = torch.cat((out, sp), 1)
+
+        out = torch.cat((out, spx[self.nums]), 1)
+
+        ms = torch.split(out, 448, dim=1)
+        m12 = torch.cat([ms[0], ms[1]], dim=1)
+        m34 = torch.cat([ms[2], ms[3]], dim=1)
+
+        return m12,m34
+
+
 # apnet修改的模块
 class Resnet_Backbone(nn.Module):
     def __init__(self):
@@ -176,6 +221,7 @@ class Resnet_Backbone(nn.Module):
         self.avgpool1 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool2 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool3 = nn.AdaptiveAvgPool2d((6, 1))
+        self.avgpool4 = nn.AdaptiveAvgPool2d((6, 1))
 
     def forward(self, x):
         x = self.resnet_conv1(x)
@@ -221,7 +267,7 @@ class Resnet_Backbone(nn.Module):
         y = self.att5(x)
         x = x * y.expand_as(x)
 
-        avg_out = torch.cat([0.2 * avg_y1, 0.3 * avg_y2, 0.5 * avg_y3], dim=1)
+        avg_out = torch.cat([avg_y1, avg_y2, avg_y3], dim=1)
 
         return x, avg_out
 
@@ -245,23 +291,41 @@ class baseline_apne_drop(nn.Module):
         self.classifier.apply(weights_init_classifier)
 
         # part(pcb）--------------------------------------------------------------------------
-        self.local_conv_list = nn.ModuleList()
+
+        self.mfm = MFRL()
+
+        self.local_conv_list1 = nn.ModuleList()
         self.parts = 6
         for _ in range(self.parts):
             local_conv = nn.Sequential(
-                nn.Conv1d(1792, 256, kernel_size=1),
+                nn.Conv1d(896, 256, kernel_size=1),
                 nn.BatchNorm1d(256),
                 nn.ReLU(inplace=True),
             )
-            self.local_conv_list.append(local_conv)
+            self.local_conv_list1.append(local_conv)
+        self.local_conv_list2 = nn.ModuleList()
+        self.parts = 6
+        for _ in range(self.parts):
+            local_conv = nn.Sequential(
+                nn.Conv1d(896, 256, kernel_size=1),
+                nn.BatchNorm1d(256),
+                nn.ReLU(inplace=True),
+            )
+            self.local_conv_list2.append(local_conv)
 
-        # Classifier for each stripe （parts feature）-------------------------------------
-        self.parts_classifier_list = nn.ModuleList()
+        # Classifier for each stripe （parts feature）
+        self.parts_classifier_list1 = nn.ModuleList()
         for _ in range(self.parts):
             fc = nn.Linear(256, num_classes)
             nn.init.normal_(fc.weight, std=0.001)
             nn.init.constant_(fc.bias, 0)
-            self.parts_classifier_list.append(fc)
+            self.parts_classifier_list1.append(fc)
+        self.parts_classifier_list2 = nn.ModuleList()
+        for _ in range(self.parts):
+            fc = nn.Linear(256, num_classes)
+            nn.init.normal_(fc.weight, std=0.001)
+            nn.init.constant_(fc.bias, 0)
+            self.parts_classifier_list2.append(fc)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -274,18 +338,29 @@ class baseline_apne_drop(nn.Module):
         feat = self.bottleneck(x)  # (batch_size, 2048)
 
         # parts --------------------------------------------------------------------------
+
+        hight_f ,low_f = self.mfm(avg_out)
+
         features_H = []  # contains 6 ([N, 256, 1])
         for i in range(self.parts):
-            stripe_features_H = self.local_conv_list[i](avg_out[:, :, i, :])
+            stripe_features_H = self.local_conv_list1[i](hight_f[:, :, i, :])
             features_H.append(stripe_features_H)
+
+        features_H2 = []  # contains 6 ([N, 256, 1])
+        for i in range(self.parts):
+            stripe_features_H = self.local_conv_list2[i](low_f[:, :, i, :])
+            features_H2.append(stripe_features_H)
 
         if self.training:
             score = self.classifier(feat)  # (batch_size, num_classes)
             parts_score_list = [
-                self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
+                self.parts_classifier_list1[i](features_H[i].view(batch_size, -1))
                 for i in range(self.parts)
             ]  # shape list（[N, C=num_classes]）
-
-            return score, x, parts_score_list
+            parts_score_list2 = [
+                self.parts_classifier_list2[i](features_H2[i].view(batch_size, -1))
+                for i in range(self.parts)
+            ]  # shape list（[N, C=num_classes]）
+            return score, x, parts_score_list,parts_score_list2
         else:
             return feat
