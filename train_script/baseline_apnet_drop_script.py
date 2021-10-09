@@ -181,7 +181,9 @@ def train():
             )
 
         # test
-        if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
+        if epoch == 0 or (
+            epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test
+        ):
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(query_loader, gallery_loader)

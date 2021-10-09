@@ -2,42 +2,48 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-class DropBlock2D(nn.Module):
-    
 
-    def __init__(self, keep_prob=0.9, block_size=7,beta=0.9):
-        super(DropBlock2D, self).__init__()
-        self.keep_prob = keep_prob
-        self.block_size = block_size
-        self.beta = beta
-    def normalize(self, input):
-        min_c, max_c = input.min(1, keepdim=True)[0], input.max(1, keepdim=True)[0]
-        input_norm = (input - min_c) / (max_c - min_c + 1e-8)
-        return input_norm
+class test_model(nn.Module):
+    def __init__(self):
+        super(test_model, self).__init__()
 
-    def forward(self, input):
-        if not self.training or self.keep_prob == 1:
-            return input
-        gamma = (1. - self.keep_prob) / self.block_size ** 2
-        for sh in input.shape[2:]:
-            gamma *= sh / (sh - self.block_size + 1)
-        M = torch.bernoulli(torch.ones_like(input) * gamma)
-        Msum = F.conv2d(M,
-                        torch.ones((input.shape[1], 1, self.block_size, self.block_size)).to(device=input.device,
-                                                                                             dtype=input.dtype),
-                        padding=self.block_size // 2,
-                        groups=input.shape[1])
+        width = 3
+        self.nums = 3
 
-        Msum = (Msum < 1).to(device=input.device, dtype=input.dtype)
-        input2 = input * Msum
-        x_norm = self.normalize(input2)
-        mask = (x_norm > self.beta).float()
-        block_mask = 1 - (mask * x_norm)
-        return input *block_mask
+        self.width = width
+
+        convs = []
+        bns = []
+        for i in range(self.nums):
+            convs.append(nn.Conv2d(width, width, kernel_size=3, padding=1, bias=False))
+            bns.append(nn.BatchNorm2d(width))
+        self.convs = nn.ModuleList(convs)
+        self.bns = nn.ModuleList(bns)
+
+        self.stype = "normal"
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, y1, y2, y3, y4):
+        spx = [y1, y2, y3, y4]
+        for i in range(self.nums):
+            if i == 0:
+                sp = spx[i]
+            else:
+                sp = sp + spx[i]
+            sp = self.convs[i](sp)
+            sp = self.relu(self.bns[i](sp))
+            if i == 0:
+                out = sp
+            else:
+                out = torch.cat((out, sp), 1)
+
+        out = torch.cat((out, spx[self.nums]), 1)
+
+        return out
 
 
-if __name__ == '__main__':
-    db2d = DropBlock2D()
-    inputs = torch.randn(32,3,43,32)
-    outputs = db2d(inputs)
+if __name__ == "__main__":
+    db2d = test_model()
+    inputs = torch.randn(32, 3, 43, 32)
+    outputs = db2d(inputs, inputs, inputs, inputs)
     print(outputs.shape)
