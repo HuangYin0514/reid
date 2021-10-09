@@ -221,10 +221,8 @@ class Resnet_Backbone(nn.Module):
         y = self.att5(x)
         x = x * y.expand_as(x)
 
-        avg_out = torch.cat([avg_y1, avg_y2, avg_y3], dim=1)
+        avg_out = torch.cat([0.2 * avg_y1, 0.3 * avg_y2, 0.5 * avg_y3], dim=1)
 
-
-        
         return x, avg_out
 
 
