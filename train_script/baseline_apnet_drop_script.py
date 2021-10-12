@@ -169,7 +169,7 @@ def train():
                 + center_loss(feat, labels) * 0.0005
                 + part_loss * 0.01
                 + part_loss2 *0.01
-                + part_loss3 * 0.01
+                + part_loss3 * 0
             )
 
             loss.backward()
