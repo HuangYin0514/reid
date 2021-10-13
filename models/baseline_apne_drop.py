@@ -260,10 +260,9 @@ class Resnet_Backbone(nn.Module):
         self.BN_4 = BN2d(1024)
         self.BN_5 = BN2d(2048)
 
-        self.db1 = DropBlock2D(keep_prob=0.9, block_size=1)
-        self.db2 = DropBlock2D(keep_prob=0.9, block_size=1)
-        self.db3 = DropBlock2D(keep_prob=0.9, block_size=3)
-        self.db4 = DropBlock2D(keep_prob=0.9, block_size=5)
+        self.db1 = DropBlock2D(keep_prob=0.9 )
+        self.db2 = DropBlock2D(keep_prob=0.9 )
+        self.db3 = DropBlock2D(keep_prob=0.9 )
 
         self.avgpool1 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool2 = nn.AdaptiveAvgPool2d((6, 1))
@@ -284,6 +283,8 @@ class Resnet_Backbone(nn.Module):
         y = self.att2(x)
         x = x * y.expand_as(x)
 
+        x = self.db1(x)
+
         avg_y1 = self.avgpool1(x)
 
         x = self.resnet_layer2(x)
@@ -293,6 +294,8 @@ class Resnet_Backbone(nn.Module):
         x = self.BN3(x)
         y = self.att3(x)
         x = x * y.expand_as(x)
+
+        x=self.db2(x)
 
         avg_y2 = self.avgpool2(x)
 
@@ -305,6 +308,8 @@ class Resnet_Backbone(nn.Module):
         x = x * y.expand_as(x)
 
         layer3_f = x
+
+        x = self.db3(x)
 
         avg_y3 = self.avgpool3(x)
 
@@ -358,6 +363,8 @@ class baseline_apne_drop(nn.Module):
         feat = self.bottleneck(x)  # (batch_size, 2048)
 
         hight_f, low_f = self.mfm(avg_out)
+
+        
 
         if self.training:
             score = self.classifier(feat)  # (batch_size, num_classes)
