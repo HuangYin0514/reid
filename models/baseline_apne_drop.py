@@ -283,9 +283,9 @@ class Resnet_Backbone(nn.Module):
         y = self.att2(x)
         x = x * y.expand_as(x)
 
-        x = self.db1(x)
+        y1 = self.db1(x)
 
-        avg_y1 = self.avgpool1(x)
+        avg_y1 = self.avgpool1(y1)
 
         x = self.resnet_layer2(x)
         x = self.att_ss3(x)
@@ -295,9 +295,9 @@ class Resnet_Backbone(nn.Module):
         y = self.att3(x)
         x = x * y.expand_as(x)
 
-        x=self.db2(x)
+        y2=self.db2(x)
 
-        avg_y2 = self.avgpool2(x)
+        avg_y2 = self.avgpool2(y2)
 
         x = self.resnet_layer3(x)
         x = self.att_ss4(x)
@@ -309,9 +309,9 @@ class Resnet_Backbone(nn.Module):
 
         layer3_f = x
 
-        x = self.db3(x)
+        y3 = self.db3(x)
 
-        avg_y3 = self.avgpool3(x)
+        avg_y3 = self.avgpool3(y3)
 
         x = self.resnet_layer4(x)
         x = self.att_ss5(x)
