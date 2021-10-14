@@ -261,8 +261,8 @@ class Resnet_Backbone(nn.Module):
         self.BN_5 = BN2d(2048)
 
         self.db1 = DropBlock2D(keep_prob=0.9, block_size=7)
-        self.db2 = DropBlock2D(keep_prob=0.9 ,block_size=5)
-        self.db3 = DropBlock2D(keep_prob=0.9 ,block_size=3)
+        self.db2 = DropBlock2D(keep_prob=0.9 ,block_size=7)
+        self.db3 = DropBlock2D(keep_prob=0.9 ,block_size=7)
 
         self.avgpool1 = nn.AdaptiveAvgPool2d((6, 1))
         self.avgpool2 = nn.AdaptiveAvgPool2d((6, 1))

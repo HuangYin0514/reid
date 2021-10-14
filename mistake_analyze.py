@@ -31,6 +31,7 @@ if __name__ == "__main__":
         result, parse_name="gallery"
     )
     for img_index in range(len(query_feature)):
+
         # 根据得分，计算得分最高的图像
         sort_index = sort_img(
             query_feature[img_index],
