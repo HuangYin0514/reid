@@ -2,7 +2,6 @@ import argparse
 import os
 import random
 import time
-from re import I
 
 import numpy as np
 import torch
@@ -46,7 +45,6 @@ parser.add_argument("--img_width", type=int, default=1)
 # train
 parser.add_argument("--num_epochs", type=int, default=2)
 parser.add_argument("--pretrain_dir", type=str, default="checkpoints/person_reid/")
-
 # print epoch iter
 parser.add_argument("--epoch_train_print", type=int, default=1)
 parser.add_argument("--epoch_test_print", type=int, default=1)
