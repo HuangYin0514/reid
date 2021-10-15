@@ -36,7 +36,6 @@ parser.add_argument(
 parser.add_argument(
     "--test_data_dir", type=str, default="./datasets/Occluded_REID_reduce"
 )
-# parser.add_a
 parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)

@@ -87,3 +87,5 @@ def visualize_rank_result(
 
     if save_flag:
         fig.savefig(save_path + str(query_label) + ".png")
+
+    plt.close("all") #关闭所有窗口
