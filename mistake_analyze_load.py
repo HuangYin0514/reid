@@ -7,6 +7,7 @@ from models.baseline_apne_drop import baseline_apne_drop
 from utils import network_module
 import scipy.io
 import numpy as np
+from utils.common import mkdirs
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -138,6 +139,8 @@ def produce_mat(q_loader, g_loader, normalize_feature=True):
         "query_cam": q_camids,
         "query_path": q_paths,
     }
+
+    mkdirs("checkpoints/person_reid/")
     scipy.io.savemat("checkpoints/person_reid/pytorch_result.mat", result)
     print("done! save pytorch_result.mat")
 
