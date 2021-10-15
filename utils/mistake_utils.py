@@ -2,6 +2,7 @@ import torch
 import numpy as np
 import matplotlib
 from utils.common import mkdirs
+
 matplotlib.use("agg")
 import matplotlib.pyplot as plt
 
@@ -53,33 +54,36 @@ def imshow(path, title=None):
 def visualize_rank_result(
     opt, query_path, query_label, gallery_path, gallery_label, sort_index, img_index
 ):
+    save_path = "checkpoints/person_reid/mistake/"
+    mkdirs(save_path)
+
     q_path = opt.query_path_dir + str(query_path[img_index]).split("/")[-1].replace(
         " ", ""
     )
     query_label = query_label[img_index]
-    # print("Top 10 images are as follow:")
 
-    # Visualize Ranking Result
-    # Graphical User Interface is needed
     fig = plt.figure(figsize=(16, 4))
     ax = plt.subplot(1, 11, 1)
     ax.axis("off")
-    imshow(q_path, "query")
+    imshow(q_path, "q_" + str(query_label))
+
+    save_flag = False
     for i in range(10):
         ax = plt.subplot(1, 11, i + 2)
         ax.axis("off")
 
         img_path = str(gallery_path[sort_index[i]]).split("/")[-1].replace(" ", "")
         img_path = opt.gallery_path_dir + img_path
-        label = gallery_label[sort_index[i]]
-
         imshow(img_path)
+
+        label = gallery_label[sort_index[i]]
         if label == query_label:
             ax.set_title("{} ".format(label), color="green")
         else:
             ax.set_title("{} ".format(label), color="red")
-        # print(img_path)
 
-    save_path = "checkpoints/person_reid/mistake/"
-    mkdirs(save_path)
-    fig.savefig(save_path+str(img_index)+".png")
+        if i == 0 and label != query_label:
+            save_flag = True
+
+    if save_flag:
+        fig.savefig(save_path + str(query_label) + ".png")

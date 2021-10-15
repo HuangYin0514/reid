@@ -16,12 +16,17 @@ parser.add_argument(
     type=str,
     default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15/bounding_box_test/",
 )
+parser.add_argument(
+    "--loadmat_dir",
+    type=str,
+    default="checkpoints/person_reid/pytorch_result.mat",
+)
 opt = parser.parse_args()
 
 ######################################################################
 if __name__ == "__main__":
 
-    result = scipy.io.loadmat("checkpoints/person_reid/pytorch_result.mat")
+    result = scipy.io.loadmat(opt.loadmat_dir)
 
     query_feature, query_cam, query_label, query_path = parse_data(
         result, parse_name="query"
