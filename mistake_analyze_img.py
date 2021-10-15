@@ -23,8 +23,8 @@ parser.add_argument(
 )
 opt = parser.parse_args()
 
-######################################################################
-if __name__ == "__main__":
+
+def generator_img():
 
     result = scipy.io.loadmat(opt.loadmat_dir)
 
@@ -49,5 +49,16 @@ if __name__ == "__main__":
 
         # Visualize the rank result
         visualize_rank_result(
-            opt, query_path, query_label, gallery_path, gallery_label, sort_index, img_index
+            opt,
+            query_path,
+            query_label,
+            gallery_path,
+            gallery_label,
+            sort_index,
+            img_index,
         )
+
+
+######################################################################
+if __name__ == "__main__":
+    generator_img()

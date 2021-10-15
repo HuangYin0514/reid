@@ -41,13 +41,12 @@ parser.add_argument(
 parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)
+parser.add_argument("--img_height", type=int, default=2)
+parser.add_argument("--img_width", type=int, default=1)
 # train
 parser.add_argument("--num_epochs", type=int, default=2)
 parser.add_argument("--pretrain_dir", type=str, default="checkpoints/person_reid/")
 
-# other
-parser.add_argument("--img_height", type=int, default=2)
-parser.add_argument("--img_width", type=int, default=1)
 # print epoch iter
 parser.add_argument("--epoch_train_print", type=int, default=1)
 parser.add_argument("--epoch_test_print", type=int, default=1)
