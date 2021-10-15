@@ -53,7 +53,7 @@ train_loader, query_loader, gallery_loader, num_classes = getData(opt)
 # model ============================================================================================================
 model = baseline_apne_drop(num_classes)
 model = model.to(device)
-# network_module.load_network(model, opt.pretrain_dir)
+network_module.load_network(model, opt.pretrain_dir)
 
 
 def _evaluation_parse_data_for_eval(data):
