@@ -3,7 +3,8 @@ import torch
 from .utils.collate_batch import train_collate_fn, val_collate_fn
 from .datasets.market1501 import Market1501
 from .utils.triplet_sampler import RandomIdentitySampler
-from  .utils.RandomErasing import RandomErasing
+from .utils.RandomErasing import RandomErasing
+
 
 def getData(opt):
     train_transforms = T.Compose(
@@ -11,6 +12,7 @@ def getData(opt):
             T.Resize((opt.img_height, opt.img_width), interpolation=3),
             T.RandomHorizontalFlip(),
             T.ToTensor(),
+            T.RandomCrop((opt.img_height, opt.img_width)),
             # RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         ]
@@ -69,4 +71,4 @@ def getData(opt):
         collate_fn=val_collate_fn,
     )
 
-    return train_loader,query_loader,gallery_loader,num_classes
+    return train_loader, query_loader, gallery_loader, num_classes
