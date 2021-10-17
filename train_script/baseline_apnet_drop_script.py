@@ -144,28 +144,28 @@ def train():
                 inputs
             )
 
-            # # parts loss-------------------------------------------------
-            # part_loss = 0
-            # for logits in parts_score_list:
-            #     stripe_loss = ce_labelsmooth_loss(logits, labels)
-            #     part_loss += stripe_loss
+            # parts loss-------------------------------------------------
+            part_loss = 0
+            for logits in parts_score_list:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss += stripe_loss
 
-            # part_loss2 = 0
-            # for logits in parts_score_list2:
-            #     stripe_loss = ce_labelsmooth_loss(logits, labels)
-            #     part_loss2 += stripe_loss
+            part_loss2 = 0
+            for logits in parts_score_list2:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss2 += stripe_loss
 
-            # part_loss3 = 0
-            # for logits in parts_score_list3:
-            #     stripe_loss = ce_labelsmooth_loss(logits, labels)
-            #     part_loss3 += stripe_loss
+            part_loss3 = 0
+            for logits in parts_score_list3:
+                stripe_loss = ce_labelsmooth_loss(logits, labels)
+                part_loss3 += stripe_loss
 
             loss = (
                 criterion(score, feat, labels)
                 + center_loss(feat, labels) * 0.0005
-                # + part_loss * 0
-                # + part_loss2 * 0.01
-                # + part_loss3 * 0.01
+                + part_loss * 0
+                + part_loss2 * 0.01
+                + part_loss3 * 0.01
             )
 
             loss.backward()
