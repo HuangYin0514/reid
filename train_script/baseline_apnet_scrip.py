@@ -11,7 +11,7 @@ from data.getDataLoader import getData
 from evaluators import distance, feature_extractor, rank
 from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from models.baseline_apnet import baseline_apnet
-from optim.WarmupMultiStepLR import WarmupMultiStepLR
+from optim.GradualWarmupScheduler import GradualWarmupScheduler
 from utils import network_module
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
@@ -118,13 +118,11 @@ optimizer = torch.optim.Adam(
 optimizer_centerloss = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 
 # # scheduler ============================================================================================================
-scheduler = WarmupMultiStepLR(
-    optimizer,
-    milestones=[40, 70],
-    gamma=0.1,
-    warmup_factor=0.01,
-    warmup_iters=10,
-    warmup_method="linear",
+scheduler_multistep = torch.optim.lr_scheduler.MultiStepLR(
+    optimizer, milestones=[40, 70], gamma=0.1
+)
+scheduler = GradualWarmupScheduler(
+    optimizer, multiplier=10, total_epoch=19, after_scheduler=scheduler_multistep
 )
 
 # Training and test ============================================================================================================
@@ -167,7 +165,9 @@ def train():
             )
 
         # test
-        if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
+        if epoch == 0 or (
+            epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test
+        ):
             # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(query_loader, gallery_loader)
