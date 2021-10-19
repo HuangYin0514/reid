@@ -46,23 +46,21 @@ def print_train_infomation(
     curve.y_train_loss.append(epoch_loss)
 
 
-def print_test_infomation(epoch, CMC, mAP, curve, logger):
-    logger.info(
-        "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-        % (CMC[0], CMC[4], CMC[9], mAP)
-    )
+def print_test_infomation(epoch, CMC, mAP, curve, logger, pattern):
+    if pattern == "ori_dataset":
+        logger.info(
+            "Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+            % (CMC[0], CMC[4], CMC[9], mAP)
+        )
+        curve.x_epoch_test.append(epoch + 1)
+        curve.y_test["top1"].append(CMC[0])
+        curve.y_test["mAP"].append(mAP)
 
-    curve.x_epoch_test.append(epoch + 1)
-    curve.y_test["top1"].append(CMC[0])
-    curve.y_test["mAP"].append(mAP)
-
-
-def print_other_test_infomation(_, CMC, mAP, curve, logger):
-    logger.info(
-        "Other dataset of Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
-        % (CMC[0], CMC[4], CMC[9], mAP)
-    )
-
-    # curve.x_epoch_test.append(epoch + 1)
-    curve.y_other_test["top1"].append(CMC[0])
-    curve.y_other_test["mAP"].append(mAP)
+    if pattern == "dest_dataset":
+        logger.info(
+            "Other dataset of Testing: top1:%.4f top5:%.4f top10:%.4f mAP:%.4f"
+            % (CMC[0], CMC[4], CMC[9], mAP)
+        )
+        # curve.x_epoch_test.append(epoch + 1)
+        curve.y_other_test["top1"].append(CMC[0])
+        curve.y_other_test["mAP"].append(mAP)

@@ -8,6 +8,7 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 from data.getDataLoader import getData
+from data.getDataLoader_OccludedREID import getOccludedData
 from evaluators import distance, feature_extractor, rank
 from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from models.baseline_apnet import baseline_apnet
@@ -17,7 +18,6 @@ from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
 from utils.print_infomation import (
     print_options,
-    print_other_test_infomation,
     print_test_infomation,
     print_train_infomation,
 )
@@ -34,7 +34,7 @@ parser.add_argument(
     default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15_reduce",
 )
 parser.add_argument(
-    "--test_data_dir", type=str, default="./datasets/Occluded_REID_reduce"
+    "--test_data_dir", type=str, default="/Users/huangyin/Documents/datasets/Occluded_REID_reduce"
 )
 # parser.add_a
 parser.add_argument("--batch_size", default=50, type=int)
@@ -83,6 +83,9 @@ curve = Draw_Curve(save_dir_path)
 # data ============================================================================================================
 # data Augumentation
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
+query_occluded_loader, gallery_occluded_loader = getOccludedData(
+    opt, data_dir=opt.test_data_dir
+)
 
 # model ============================================================================================================
 model = baseline_apnet(num_classes)
@@ -168,11 +171,17 @@ def train():
 
         # test
         if epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test:
-            # test current datset-------------------------------------
+            # test current datset
             torch.cuda.empty_cache()
             CMC, mAP = test(query_loader, gallery_loader)
+            print_test_infomation(epoch, CMC, mAP, curve, logger, pattern="ori_dataset")
 
-            print_test_infomation(epoch, CMC, mAP, curve, logger)
+            # test other datset
+            torch.cuda.empty_cache()
+            CMC, mAP = test(query_occluded_loader, gallery_occluded_loader)
+            print_test_infomation(
+                epoch, CMC, mAP, curve, logger, pattern="dest_dataset"
+            )
 
     # Save the loss curve
     curve.save_curve()

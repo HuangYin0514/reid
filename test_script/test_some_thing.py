@@ -1,57 +1,50 @@
 import torch
-import torch.nn.functional as F
 from torch import nn
+import torch.nn.functional as F
+from torch.nn import Parameter
+from torch_geometric.nn.conv import MessagePassing 
+from torch_geometric.utils import remove_self_loops
+from utils import euclidean_distance, init_edge
+from typing import Callable, Union
+
+from torch import Tensor
+from torch_sparse import SparseTensor, matmul
 
 
-class test_model(nn.Module):
-    def __init__(self):
-        super(test_model, self).__init__()
 
-        self.nums = 3
-        convs = []
-        bns = []
-        for _ in range(self.nums):
-            convs.append(
-                nn.Conv2d(
-                    448,
-                    448,
-                    kernel_size=3,
-                    padding=1,
-                    bias=False,
-                )
-            )
-            bns.append(nn.BatchNorm2d(448))
-        self.convs = nn.ModuleList(convs)
-        self.bns = nn.ModuleList(bns)
-        self.relu = nn.ReLU(inplace=True)
+class GINConv(MessagePassing):
+    def __init__(self,  eps: float = 0.2, train_eps: bool = False,
+                 **kwargs):
+        super(GINConv, self).__init__(aggr='mean', **kwargs)
+        self.initial_eps = eps
+        if train_eps:
+            self.eps = torch.nn.Parameter(torch.Tensor([eps]))
+        else:
+            self.register_buffer('eps', torch.Tensor([eps]))
+        self.reset_parameters()
+        
+    def reset_parameters(self):
+        self.eps.data.fill_(self.initial_eps)
 
-    def forward(self, x):
-        spx = torch.split(x, 448, dim=1)
-        for i in range(self.nums):
-            if i == 0:
-                sp = spx[i]
-            else:
-                sp = sp + spx[i]
-            sp = self.convs[i](sp)
-            sp = self.relu(self.bns[i](sp))
-            if i == 0:
-                out = sp
-            else:
-                out = torch.cat((out, sp), 1)
+    def forward(self, x, edge_index, size = None):
+        if isinstance(x, Tensor):
+            x: OptPairTensor = (x, x)
 
-        out = torch.cat((out, spx[self.nums]), 1)
+        # propagate_type: (x: OptPairTensor)
+        out = self.propagate(edge_index, x=x, size=size)
 
-        ms = torch.split(out, 448, dim=1)
-        m12 = torch.cat([ms[0], ms[1]], dim=1)
-        m34 = torch.cat([ms[2], ms[3]], dim=1)
+        x_r = x[1]
+        if x_r is not None:
+            out = (1 - self.eps) * x_r + self.eps * out
 
-        m = [m12,m34]
+        return out
 
-        return m
+    def message(self, x_j) :
+        return x_j
 
+    def message_and_aggregate(self, adj_t, x):
+        adj_t = adj_t.set_value(None, layout=None)
+        return matmul(adj_t, x[0], reduce=self.aggr)
 
-if __name__ == "__main__":
-    db2d = test_model()
-    inputs = torch.randn(32, 1792, 6, 1)
-    outputs = db2d(inputs)
-    # print(outputs.shape)
+    def __repr__(self):
+        return '{}(nn={})'.format(self.__class__.__name__, self.nn)
