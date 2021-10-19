@@ -8,7 +8,6 @@ def pcb_script():
 # 参考apnet中的模块
 def baseline_apnet_scrip():
     from train_script.baseline_apnet_scrip import train
-
     print("目标精度95.0%。。。")
     return train
 
