@@ -17,6 +17,11 @@ def baseline_apnet_drop_script():
     return train
 
 # baseline_apnet_drop_script
+def baseline_apnet_FPB():
+    from train_script.baseline_apnet_FPB_script import train
+    return train
+
+# baseline_apnet_drop_script
 def baseline_apnet_2branch_script():
     from train_script.baseline_apnet_2branch_script import train
     return train
@@ -36,7 +41,7 @@ def pcb_apnet_script():
 
 if __name__ == "__main__":
 
-    train = baseline_apnet_scrip()
+    train = baseline_apnet_FPB()
     print("=" * 40)
     print("运行中。。。" + train.__globals__["__name__"])
     print("=" * 40)

@@ -2,9 +2,6 @@
 *.pyc
 __pycache__/
 
-# # 数据集文件
-# datasets/
-
 # 生成的文件
 checkpoints/
 *.mat
