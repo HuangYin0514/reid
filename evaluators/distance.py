@@ -41,7 +41,7 @@ def compute_distance_matrix(qf, gf, dist_metric="euclidean_squared_distance"):
         dist = cosine_dist(qf, gf)
         rank_results = np.argsort(dist)[:, ::-1]
     if dist_metric == "euclidean_squared_distance":
-        dist = euclidean_squared_distance(qf, gf)
+        dist = euclidean_squared_distance(qf, gf) #（bs_q,bs_g)
         rank_results = np.argsort(dist, axis=1)
-        rank_results = rank_results.numpy()
+        rank_results = rank_results.numpy() #（bs_q,bs_g) sorted by distance
     return dist, rank_results
