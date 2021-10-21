@@ -150,7 +150,12 @@ def train():
             # Loss = 0
             loss_c = criterion_c(fea, labels)
             loss_t = criterion_t(fea, labels)
-            loss_x = criterion_x(output, labels)
+
+            loss_x=0.0
+            for out in output:
+                loss_x += criterion_x(out, labels)
+            loss_x /= len(output)
+            # loss_x = criterion_x(output, labels)
 
             loss = (
                 weight_x * loss_x
