@@ -109,7 +109,7 @@ criterion_c = CenterLoss(
     num_classes=num_classes, feat_dim=2048 + (1024) * 3, use_gpu=use_gpu
 )
 
-div_penalty = OFPenalty(1e-6) #div_reg_beta = 1e-6
+div_penalty = OFPenalty(1e-6)  # div_reg_beta = 1e-6
 # optimizer ============================================================================================================
 optimizer = torch.optim.Adam(
     model.parameters(),
@@ -151,7 +151,7 @@ def train():
             loss_c = criterion_c(fea, labels)
             loss_t = criterion_t(fea, labels)
 
-            loss_x=0.0
+            loss_x = 0.0
             for out in output:
                 loss_x += criterion_x(out, labels)
             loss_x /= len(output)
@@ -163,9 +163,8 @@ def train():
                 + 0.0005 / centerloss_weight * loss_c
             )
 
-            
             penalty = div_penalty(reg_feat)
-            if epoch >= 0:  #div_reg_start = 0
+            if epoch >= 0:  # div_reg_start = 0
                 loss += penalty
 
             loss.backward()
