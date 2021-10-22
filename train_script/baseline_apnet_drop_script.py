@@ -5,21 +5,22 @@ import time
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 from data.getDataLoader import getData
-from evaluators import distance, feature_extractor, rank
+from data.getDataLoader_OccludedREID import getOccludedData
+
 from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from models.baseline_apne_drop import baseline_apne_drop
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils import network_module
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
+from .test_model import test
 from utils.print_infomation import (
     print_options,
-    print_other_test_infomation,
     print_test_infomation,
     print_train_infomation,
 )
+
 from loss.pcb_loss import CrossEntropyLabelSmoothLoss
 
 # opt ==============================================================================
@@ -80,6 +81,9 @@ curve = Draw_Curve(save_dir_path)
 # data ============================================================================================================
 # data Augumentation
 train_loader, query_loader, gallery_loader, num_classes = getData(opt)
+query_occluded_loader, gallery_occluded_loader = getOccludedData(
+    opt, data_dir=opt.test_data_dir
+)
 
 # model ============================================================================================================
 model = baseline_apne_drop(num_classes)
@@ -163,7 +167,7 @@ def train():
             loss = (
                 criterion(score, feat, labels)
                 + center_loss(feat, labels) * 0.0005
-                + part_loss * 0
+                + part_loss * 0.01
                 + part_loss2 * 0.01
                 + part_loss3 * 0.01
             )
@@ -190,15 +194,23 @@ def train():
                 start_time,
             )
 
+        
         # test
         if epoch == 0 or (
             epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test
         ):
-            # test current datset-------------------------------------
+            # test current datset
             torch.cuda.empty_cache()
-            CMC, mAP = test(query_loader, gallery_loader)
+            CMC, mAP = test(query_loader, gallery_loader,model)
+            print_test_infomation(epoch, CMC, mAP, curve, logger, pattern="ori_dataset")
 
-            print_test_infomation(epoch, CMC, mAP, curve, logger)
+            # test other datset
+            torch.cuda.empty_cache()
+            CMC, mAP = test(query_occluded_loader, gallery_occluded_loader,model)
+            print_test_infomation(
+                epoch, CMC, mAP, curve, logger, pattern="dest_dataset"
+            )
+
 
     # Save the loss curve
     curve.save_curve()
@@ -206,28 +218,3 @@ def train():
     network_module.save_network(model, save_dir_path, "final")
 
     print("training is done !")
-
-
-@torch.no_grad()
-def test(q_loader, g_loader, normalize_feature=True):
-    model.eval()
-
-    # Extracting features from query set(matrix size is qf.size(0), qf.size(1))------------------------------------------------------------
-    qf, q_pids, q_camids = feature_extractor.feature_extract(q_loader, model, device)
-
-    # Extracting features from gallery set(matrix size is gf.size(0), gf.size(1))------------------------------------------------------------
-    gf, g_pids, g_camids = feature_extractor.feature_extract(g_loader, model, device)
-
-    # normalize_feature------------------------------------------------------------------------------
-    if normalize_feature:
-        # print("Normalzing features with L2 norm ...")
-        qf = F.normalize(qf, p=2, dim=1)
-        gf = F.normalize(gf, p=2, dim=1)
-
-    # Computing distance matrix------------------------------------------------------------------------
-    _, rank_results = distance.compute_distance_matrix(qf, gf)
-
-    # Computing CMC and mAP------------------------------------------------------------------------
-    CMC, MAP = rank.eval_market1501(rank_results, q_camids, q_pids, g_camids, g_pids)
-
-    return CMC, MAP
