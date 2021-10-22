@@ -43,5 +43,5 @@ def compute_distance_matrix(qf, gf, dist_metric="euclidean_squared_distance"):
     if dist_metric == "euclidean_squared_distance":
         dist = euclidean_squared_distance(qf, gf) #（bs_q,bs_g)
         rank_results = np.argsort(dist, axis=1)
-        rank_results = rank_results.numpy() #（bs_q,bs_g) sorted by distance
+        # rank_results = rank_results.numpy() #（bs_q,bs_g) sorted by distance
     return dist, rank_results
