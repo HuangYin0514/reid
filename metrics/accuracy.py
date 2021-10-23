@@ -1,7 +1,10 @@
+<<<<<<< HEAD
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
 
+=======
+>>>>>>> 24b42884e9a06a52feeed8e4afaa8f4e4676b760
 
 def accuracy(output, target, topk=(1,)):
     """Computes the accuracy over the k top predictions for

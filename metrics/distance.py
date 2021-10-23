@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -78,3 +79,19 @@ def cosine_distance(input1, input2):
     input2_normed = F.normalize(input2, p=2, dim=1)
     distmat = 1 - torch.mm(input1_normed, input2_normed.t())
     return distmat
+=======
+
+import numpy as np
+
+def cosine_dist(x, y):
+    '''compute cosine distance between two martrix x and y with sizes (n1, d), (n2, d)'''
+    def normalize(x):
+        '''normalize a 2d matrix along axis 1'''
+        norm = np.tile(np.sqrt(np.sum(np.square(x), axis=1, keepdims=True)), [1, x.shape[1]])
+        return x / norm
+    x = normalize(x)
+    y = normalize(y)
+    return np.matmul(x, y.transpose([1, 0]))
+
+
+>>>>>>> 24b42884e9a06a52feeed8e4afaa8f4e4676b760

@@ -3,6 +3,7 @@ from torch import nn
 from torch.nn import functional as F
 from torchvision import models
 from utils import torchtool
+from .rga_module import RGA_Module
 
 
 class Resnet50_Branch(nn.Module):
@@ -23,16 +24,36 @@ class Resnet50_Branch(nn.Module):
         return self.backbone(x)
 
 
-class PCBModel(nn.Module):
-    def __init__(self, num_classes, loss='softmax', ** kwargs):
-
-        super(PCBModel, self).__init__()
+class PCB_RGA(nn.Module):
+    def __init__(self, num_classes,  loss='softmax', height=384, width=128, **kwargs):
+        super(PCB_RGA, self).__init__()
         self.parts = 6
         self.num_classes = num_classes
         self.loss = loss
 
         # backbone--------------------------------------------------------------------------
         self.backbone = Resnet50_Branch()
+
+        # rga module--------------------------------------------------------------------------
+        branch_name = 'rgas'
+        if 'rgasc' in branch_name:
+            spa_on = True
+            cha_on = True
+        elif 'rgas' in branch_name:
+            spa_on = True
+            cha_on = False
+        elif 'rgac' in branch_name:
+            spa_on = False
+            cha_on = True
+        else:
+            raise NameError
+        spa_on = False
+        cha_on = True
+        s_ratio = 8
+        c_ratio = 8
+        d_ratio = 8
+        self.rga_att = RGA_Module(2048, (height//16)*(width//16), use_spatial=spa_on, use_channel=cha_on,
+                                  cha_ratio=c_ratio, spa_ratio=s_ratio, down_ratio=d_ratio)
 
         # avgpool--------------------------------------------------------------------------
         self.avgpool = nn.AdaptiveAvgPool2d((self.parts, 1))
@@ -61,16 +82,19 @@ class PCBModel(nn.Module):
         # backbone(Tensor T)------------------------------------------------------------------------------------
         resnet_features = self.backbone(x)
 
-        # tensor g([N, C, H, W])---------------------------------------------------------------------------------
+        # rga_att ([N, 2048, 24, 6])------------------------------------------------------------------------------------
+        resnet_features = self.rga_att(resnet_features)
+
+        # tensor g([N, 2048, 6, 1])---------------------------------------------------------------------------------
         features_G = self.avgpool(resnet_features)
 
-        # 1x1 conv([N, C=256, H=S, W=1])---------------------------------------------------------------------------------
+        # 1x1 conv([N, C=256, H=6, W=1])---------------------------------------------------------------------------------
         features_H = []
         for i in range(self.parts):
             stripe_features_H = self.local_conv_list[i](features_G[:, :, i, :])
             features_H.append(stripe_features_H)
 
-        # Return the features_H***********************************************************************
+        # Return the features_H([N,1536])***********************************************************************
         if not self.training:
             v_g = torch.cat(features_H, dim=2)
             v_g = F.normalize(v_g, p=2, dim=1)
@@ -83,8 +107,8 @@ class PCBModel(nn.Module):
         return logits_list
 
 
-def pcb(num_classes, **kwargs):
-    return PCBModel(
+def pcb_rga(num_classes, **kwargs):
+    return PCB_RGA(
         num_classes=num_classes,
         **kwargs
     )

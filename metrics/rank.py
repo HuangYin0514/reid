@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
@@ -182,3 +183,56 @@ def evaluate_rank(distmat, q_pids, g_pids, q_camids, g_camids, max_rank=50,
         return evaluate_cy(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03)
     else:
         return evaluate_py(distmat, q_pids, g_pids, q_camids, g_camids, max_rank, use_metric_cuhk03)
+=======
+
+import numpy as np
+
+def compute_AP(a_rank, query_camid, query_pid, gallery_camids, gallery_pids, mode='inter-camera'):
+    '''given a query and all galleries, compute its ap and cmc'''
+
+    if mode == 'inter-camera':
+        junk_index_1 = in1d(np.argwhere(query_pid == gallery_pids), np.argwhere(query_camid == gallery_camids))
+        junk_index_2 = np.argwhere(gallery_pids == -1)
+        junk_index = np.append(junk_index_1, junk_index_2)
+        index_wo_junk = notin1d(a_rank, junk_index)
+        good_index = in1d(np.argwhere(query_pid == gallery_pids), np.argwhere(query_camid != gallery_camids))
+    elif mode == 'intra-camera':
+        junk_index_1 = np.argwhere(query_camid != gallery_camids)
+        junk_index_2 = np.argwhere(gallery_pids == -1)
+        junk_index = np.append(junk_index_1, junk_index_2)
+        index_wo_junk = notin1d(a_rank, junk_index)
+        good_index = np.argwhere(query_pid == gallery_pids)
+    elif mode == 'all':
+        junk_index = np.argwhere(gallery_pids == -1)
+        index_wo_junk = notin1d(a_rank, junk_index)
+        good_index = in1d(np.argwhere(query_pid == gallery_pids))
+
+    num_good = len(good_index)
+    hit = np.in1d(index_wo_junk, good_index)
+    index_hit = np.argwhere(hit == True).flatten()
+    if len(index_hit) == 0:
+        AP = 0
+        cmc = np.zeros([len(index_wo_junk)])
+    else:
+        precision = []
+        for i in range(num_good):
+            precision.append(float(i+1) / float((index_hit[i]+1)))
+        AP = np.mean(np.array(precision))
+        cmc = np.zeros([len(index_wo_junk)])
+        cmc[index_hit[0]:] = 1
+    return AP, cmc
+
+
+def in1d( array1, array2, invert=False):
+    '''
+    :param set1: np.array, 1d
+    :param set2: np.array, 1d
+    :return:
+    '''
+    mask = np.in1d(array1, array2, invert=invert)
+    return array1[mask]
+
+
+def notin1d( array1, array2):
+    return in1d(array1, array2, invert=True)
+>>>>>>> 24b42884e9a06a52feeed8e4afaa8f4e4676b760
