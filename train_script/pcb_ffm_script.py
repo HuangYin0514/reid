@@ -5,22 +5,21 @@ import time
 
 import numpy as np
 import torch
+import torch.nn.functional as F
 from data.getDataLoader import getData
 from data.getDataLoader_OccludedREID import getOccludedData
-from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
-from models.baseline_apne_drop import baseline_apne_drop
-from optim.WarmupMultiStepLR import WarmupMultiStepLR
+from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
+from models.pcb_ffm import pcb_ffm
 from utils import network_module
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
-from .test_model import test
 from utils.print_infomation import (
     print_options,
     print_test_infomation,
     print_train_infomation,
 )
 
-from loss.pcb_loss import CrossEntropyLabelSmoothLoss
+from .test_model import test
 
 # opt ==============================================================================
 parser = argparse.ArgumentParser(description="Base Dl")
@@ -39,8 +38,8 @@ parser.add_argument(
 parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
 parser.add_argument("--num_workers", default=0, type=int)
-parser.add_argument("--img_height", type=int, default=2)
-parser.add_argument("--img_width", type=int, default=1)
+parser.add_argument("--img_height", type=int, default=256)
+parser.add_argument("--img_width", type=int, default=128)
 # train
 parser.add_argument("--num_epochs", type=int, default=2)
 parser.add_argument("--pretrain_dir", type=str, default="checkpoints/person_reid/")
@@ -85,7 +84,7 @@ query_occluded_loader, gallery_occluded_loader = getOccludedData(
 )
 
 # model ============================================================================================================
-model = baseline_apne_drop(num_classes)
+model = pcb_ffm(num_classes)
 model = model.to(device)
 network_module.load_network(model, opt.pretrain_dir)
 
@@ -94,41 +93,26 @@ network_module.load_network(model, opt.pretrain_dir)
 use_gpu = False
 if device == "cuda":
     use_gpu = True
-
-
-criterion = Softmax_Triplet_loss(
-    num_class=num_classes,
-    margin=0.3,
-    epsilon=0.1,
-    use_gpu=use_gpu,
-)
-
-center_loss = CenterLoss(
-    num_classes=num_classes,
-    feature_dim=2048,
-    use_gpu=use_gpu,
-)
-
+criterion = F.cross_entropy
 ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
+triplet_loss = TripletLoss(margin=0.3)
 
 # optimizer ============================================================================================================
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=0.00035,
-    weight_decay=0.0005,
+# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+lr = 0.1
+base_param_ids = set(map(id, model.backbone.parameters()))
+new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+param_groups = [
+    {"params": model.backbone.parameters(), "lr": lr / 100},
+    {"params": new_params, "lr": lr},
+]
+optimizer = torch.optim.SGD(
+    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
 )
-
-optimizer_centerloss = torch.optim.SGD(center_loss.parameters(), lr=0.5)
 
 # # scheduler ============================================================================================================
-scheduler = WarmupMultiStepLR(
-    optimizer,
-    milestones=[40, 70],
-    gamma=0.1,
-    warmup_factor=0.01,
-    warmup_iters=10,
-    warmup_method="linear",
-)
+# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
 # Training and test ============================================================================================================
 def train():
@@ -143,38 +127,30 @@ def train():
             # net ---------------------
             optimizer.zero_grad()
 
-            score, feat, parts_score_list, parts_score_list2, parts_score_list3 = model(
-                inputs
-            )
+            # model-------------------------------------------------
+            parts_scores, gloab_features, fusion_feature = model(inputs)
+
+            ####################################################################
+            # gloab loss-------------------------------------------------
+            gloab_loss = triplet_loss(gloab_features, labels)
+
+            # fusion loss-------------------------------------------------
+            fusion_loss = triplet_loss(fusion_feature, labels)
 
             # parts loss-------------------------------------------------
             part_loss = 0
-            for logits in parts_score_list:
+            for logits in parts_scores:
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 part_loss += stripe_loss
 
-            part_loss2 = 0
-            for logits in parts_score_list2:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                part_loss2 += stripe_loss
-
-            part_loss3 = 0
-            for logits in parts_score_list3:
-                stripe_loss = ce_labelsmooth_loss(logits, labels)
-                part_loss3 += stripe_loss
-
-            loss = (
-                criterion(score, feat, labels)
-                + center_loss(feat, labels) * 0.0005
-                + part_loss * 0.01
-                + part_loss2 * 0.01
-                + part_loss3 * 0.01
-            )
+            # all of loss -------------------------------------------------
+            loss_alph = 0.1
+            loss_beta = 0.01
+            loss = part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
 
             loss.backward()
 
             optimizer.step()
-            optimizer_centerloss.step()
             # --------------------------
 
             running_loss += loss.item() * inputs.size(0)
@@ -193,23 +169,21 @@ def train():
                 start_time,
             )
 
-        
         # test
         if epoch == 0 or (
             epoch % opt.epoch_test_print == 0 and epoch > opt.epoch_start_test
         ):
             # test current datset
             torch.cuda.empty_cache()
-            CMC, mAP = test(query_loader, gallery_loader,model)
+            CMC, mAP = test(query_loader, gallery_loader, model)
             print_test_infomation(epoch, CMC, mAP, curve, logger, pattern="ori_dataset")
 
             # test other datset
             torch.cuda.empty_cache()
-            CMC, mAP = test(query_occluded_loader, gallery_occluded_loader,model)
+            CMC, mAP = test(query_occluded_loader, gallery_occluded_loader, model)
             print_test_infomation(
                 epoch, CMC, mAP, curve, logger, pattern="dest_dataset"
             )
-
 
     # Save the loss curve
     curve.save_curve()

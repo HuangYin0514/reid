@@ -11,7 +11,6 @@ def getData(opt):
         [
             T.Resize((opt.img_height, opt.img_width), interpolation=3),
             T.RandomHorizontalFlip(),
-            T.RandomCrop((opt.img_height, opt.img_width)),
             T.ToTensor(),
             RandomErasing(probability=0.5, mean=[0.485, 0.456, 0.406]),
             T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),

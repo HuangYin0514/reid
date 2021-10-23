@@ -31,6 +31,11 @@ def pcb_script():
 
     return train
 
+def pcb_ffm_script():
+    from train_script.pcb_ffm_script import train
+    return train
+
+
 
 def pcb_apnet_script():
     from train_script.pcb_apnet_scrip import train
