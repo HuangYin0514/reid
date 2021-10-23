@@ -7,7 +7,7 @@ from .pcb_cbam_v4 import resnet50_cbam_reid_model_v4
 from .pcb_gloab import pcb_gloab
 from .pcb_gloab_triplet import pcb_gloab_triplet
 from .pcb_gloab_rga import pcb_gloab_rga
-from .pcb_gloab_ffm import pcb_gloab_ffm
+from .pcb_gloab_ffm import pcb_ffm
 
 __model_factory = {
     'Res_net': Res_net,
@@ -18,7 +18,7 @@ __model_factory = {
     'pcb_gloab': pcb_gloab,
     'pcb_gloab_triplet': pcb_gloab_triplet,
     'pcb_gloab_rga': pcb_gloab_rga,
-    'pcb_gloab_ffm':pcb_gloab_ffm
+    'pcb_gloab_ffm':pcb_ffm
 
 }
 

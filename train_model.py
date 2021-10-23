@@ -87,7 +87,7 @@ def train(model, criterion, optimizer, scheduler, dataloader, device, save_dir_p
 
         # Testing / Validating-----------------------------------
         if (epoch + 1) % args.test_every == 0 or epoch + 1 == args.epochs or epoch > args.epochs-5:
-            # test current datset-------------------------------------
+            # # test current datset-------------------------------------
             torch.cuda.empty_cache()
             CMC, mAP = test(model, val_loader, args)
             logger.info(args.dataset_name)
