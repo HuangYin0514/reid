@@ -34,7 +34,7 @@ def euclidean_squared_distance(input1, input2):
     return distmat
 
 
-def compute_distance_matrix(qf, gf, dist_metric="euclidean_squared_distance"):
+def compute_distance_matrix(qf, gf, dist_metric="cosine_dist"):
     if dist_metric == "cosine_dist":
         qf = np.array(qf.cpu())
         gf = np.array(gf.cpu())
