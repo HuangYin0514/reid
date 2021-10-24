@@ -28,7 +28,6 @@ def feature_extract(data_loader, model, device):
         data_f.append(features)
         data_pids.extend(pids)
         data_camids.extend(camids)
-    print(len(data_f))
     data_f = torch.cat(data_f, 0)
     data_pids = np.asarray(data_pids)
     data_camids = np.asarray(data_camids)
