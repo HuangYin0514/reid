@@ -195,7 +195,4 @@ class pcb_ffm_change(nn.Module):
             for i in range(self.parts)
         ]  # shape list（[N, C=num_classes]）
 
-        # classifier(fusion feature)
-        # fusion_score = self.fusion_feature_classifier(fusion_feature)
-
         return parts_score_list, gloab_features, fusion_feature
