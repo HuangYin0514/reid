@@ -115,7 +115,7 @@ class gloab_branch(nn.Module):
         batch_size = resnet_features.size(0)
         # gloab([N, 512])
         gloab_features = self.k11_conv(resnet_features)
-        gloab_features = self.rga_att(gloab_features)
+        # gloab_features = self.rga_att(gloab_features)
         gloab_features = self.gloab_agp(gloab_features).view(
             batch_size, 512, -1
         )  # ([N, 512, 1])
