@@ -9,7 +9,7 @@ import torch.nn.functional as F
 from data.getDataLoader import getData
 from data.getDataLoader_OccludedREID import getOccludedData
 from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
-from models.pcb_ffm import pcb_ffm
+from models.pcb_ffm_change import pcb_ffm_change
 from utils import network_module
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
@@ -88,7 +88,7 @@ query_occluded_loader, gallery_occluded_loader = getOccludedData(
 )
 
 # model ============================================================================================================
-model = pcb_ffm(num_classes)
+model = pcb_ffm_change(num_classes)
 model = model.to(device)
 network_module.load_network(model, opt.pretrain_dir)
 
