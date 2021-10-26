@@ -33,7 +33,9 @@ parser.add_argument(
     default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15_reduce",
 )
 parser.add_argument(
-    "--test_data_dir", type=str, default="/Users/huangyin/Documents/datasets/Occluded_REID_reduce"
+    "--test_data_dir",
+    type=str,
+    default="/Users/huangyin/Documents/datasets/Occluded_REID_reduce",
 )
 parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
@@ -146,7 +148,9 @@ def train():
             # all of loss -------------------------------------------------
             loss_alph = 1
             loss_beta = 0.015
-            loss = part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
+            loss = (
+                0.1 * part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
+            )
 
             loss.backward()
 
