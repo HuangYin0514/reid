@@ -101,22 +101,20 @@ ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
 triplet_loss = TripletLoss(margin=0.3)
 
 # optimizer ============================================================================================================
-optimizer = torch.optim.Adam(
-    model.parameters(),
-    lr=0.00035,
-    weight_decay=0.0005,
+lr = 0.1
+base_param_ids = set(map(id, model.backbone.parameters()))
+new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
+param_groups = [
+    {"params": model.backbone.parameters(), "lr": lr / 100},
+    {"params": new_params, "lr": lr},
+]
+optimizer = torch.optim.SGD(
+    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
 )
-
 
 # # scheduler ============================================================================================================
-scheduler = WarmupMultiStepLR(
-    optimizer,
-    milestones=[40, 70],
-    gamma=0.1,
-    warmup_factor=0.01,
-    warmup_iters=10,
-    warmup_method="linear",
-)
+scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
+
 # Training and test ============================================================================================================
 def train():
     start_time = time.time()
@@ -131,7 +129,9 @@ def train():
             optimizer.zero_grad()
 
             # model-------------------------------------------------
-            parts_scores, gloab_features, fusion_feature = model(inputs)
+            parts_scores, gloab_features, fusion_feature, lstm_score_list = model(
+                inputs
+            )
 
             ####################################################################
             # gloab loss-------------------------------------------------
@@ -146,10 +146,21 @@ def train():
                 stripe_loss = ce_labelsmooth_loss(logits, labels)
                 part_loss += stripe_loss
 
+            # lstm loss -------------------------------------------------
+            lstm_loss = 0
+            for lstm_score in lstm_score_list:
+                stripe_loss = ce_labelsmooth_loss(lstm_score, labels)
+                lstm_loss += stripe_loss
+
             # all of loss -------------------------------------------------
             loss_alph = 0.1
             loss_beta = 0.01
-            loss = part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
+            loss = (
+                part_loss
+                + lstm_loss
+                + loss_alph * gloab_loss[0]
+                + loss_beta * fusion_loss[0]
+            )
 
             loss.backward()
 
