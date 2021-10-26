@@ -148,7 +148,9 @@ def train():
             # all of loss -------------------------------------------------
             loss_alph = 1
             loss_beta = 0.01
-            loss = 0.1*part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
+            loss = (
+                0.1 * part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
+            )
 
             loss.backward()
 
