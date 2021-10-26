@@ -98,10 +98,10 @@ def custom_RGA_Module():
     )
 
 
-class pcb_ffm(nn.Module):
+class pcb_ffm_change(nn.Module):
     def __init__(self, num_classes, loss="softmax", **kwargs):
 
-        super(pcb_ffm, self).__init__()
+        super(pcb_ffm_change, self).__init__()
         self.parts = 6
         self.num_classes = num_classes
         self.loss = loss

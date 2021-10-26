@@ -11,7 +11,6 @@ from data.getDataLoader_OccludedREID import getOccludedData
 from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
 from models.pcb_ffm_change import pcb_ffm_change
 from utils import network_module
-from optim.WarmupMultiStepLR import WarmupMultiStepLR
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
 from utils.print_infomation import (
