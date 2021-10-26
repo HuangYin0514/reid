@@ -33,7 +33,9 @@ parser.add_argument(
     default="/Users/huangyin/Documents/datasets/Market-1501-v15.09.15_reduce",
 )
 parser.add_argument(
-    "--test_data_dir", type=str, default="/Users/huangyin/Documents/datasets/Occluded_REID_reduce"
+    "--test_data_dir",
+    type=str,
+    default="/Users/huangyin/Documents/datasets/Occluded_REID_reduce",
 )
 parser.add_argument("--batch_size", default=50, type=int)
 parser.add_argument("--test_batch_size", default=128, type=int)
