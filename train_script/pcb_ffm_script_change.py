@@ -9,8 +9,10 @@ import torch.nn.functional as F
 from data.getDataLoader import getData
 from data.getDataLoader_OccludedREID import getOccludedData
 from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
-from models.pcb_ffm import pcb_ffm
+from models.pcb_ffm_change import pcb_ffm_change
 from utils import network_module
+from optim.WarmupMultiStepLR import WarmupMultiStepLR
+from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
 from utils.print_infomation import (
@@ -86,7 +88,7 @@ query_occluded_loader, gallery_occluded_loader = getOccludedData(
 )
 
 # model ============================================================================================================
-model = pcb_ffm(num_classes)
+model = pcb_ffm_change(num_classes)
 model = model.to(device)
 network_module.load_network(model, opt.pretrain_dir)
 
@@ -100,22 +102,22 @@ ce_labelsmooth_loss = CrossEntropyLabelSmoothLoss(num_classes=num_classes)
 triplet_loss = TripletLoss(margin=0.3)
 
 # optimizer ============================================================================================================
-# optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
-lr = 0.1
-base_param_ids = set(map(id, model.backbone.parameters()))
-new_params = [p for p in model.parameters() if id(p) not in base_param_ids]
-param_groups = [
-    {"params": model.backbone.parameters(), "lr": lr / 10},
-    {"params": new_params, "lr": lr},
-]
-optimizer = torch.optim.SGD(
-    param_groups, momentum=0.9, weight_decay=5e-4, nesterov=True
+optimizer = torch.optim.Adam(
+    model.parameters(),
+    lr=0.00035,
+    weight_decay=0.0005,
 )
 
-# # scheduler ============================================================================================================
-# scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
-scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.1)
 
+# # scheduler ============================================================================================================
+scheduler = WarmupMultiStepLR(
+    optimizer,
+    milestones=[40, 70],
+    gamma=0.1,
+    warmup_factor=0.01,
+    warmup_iters=10,
+    warmup_method="linear",
+)
 # Training and test ============================================================================================================
 def train():
     start_time = time.time()
@@ -146,11 +148,9 @@ def train():
                 part_loss += stripe_loss
 
             # all of loss -------------------------------------------------
-            loss_alph = 1
-            loss_beta = 0.015
-            loss = (
-                0.1 * part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
-            )
+            loss_alph = 0.1
+            loss_beta = 0.01
+            loss = part_loss + loss_alph * gloab_loss[0] + loss_beta * fusion_loss[0]
 
             loss.backward()
 

@@ -12,9 +12,14 @@ def pcb_ffm_script():
     return train
 
 
+def pcb_ffm_script_change():
+    from train_script.pcb_ffm_script_change import train
+
+    return train
+
 if __name__ == "__main__":
 
-    train = pcb_ffm_script()
+    train = pcb_ffm_script_change()
     print("=" * 40)
     print("运行中。。。" + train.__globals__["__name__"])
     print("=" * 40)
