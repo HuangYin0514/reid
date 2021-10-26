@@ -12,7 +12,6 @@ from loss.pcb_loss import CrossEntropyLabelSmoothLoss, TripletLoss
 from models.pcb_ffm_change import pcb_ffm_change
 from utils import network_module
 from optim.WarmupMultiStepLR import WarmupMultiStepLR
-from loss.baseline_loss import CenterLoss, Softmax_Triplet_loss
 from utils.draw_curve import Draw_Curve
 from utils.logger import Logger
 from utils.print_infomation import (
