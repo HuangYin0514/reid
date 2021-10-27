@@ -152,8 +152,8 @@ def train():
                 lstm_loss += stripe_loss
 
             # all of loss -------------------------------------------------
-            loss_alph = 0.1
-            loss_beta = 0.01
+            loss_alph = 0
+            loss_beta = 0
             loss = (
                 part_loss
                 + lstm_loss
