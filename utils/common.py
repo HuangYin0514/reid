@@ -1,5 +1,6 @@
-
 import os
+import errno
+
 
 def mkdirs(paths):
     """create empty directories if they don't exist
@@ -20,3 +21,13 @@ def mkdir(path):
     """
     if not os.path.exists(path):
         os.makedirs(path)
+
+
+def mkdir_if_missing(dirname):
+    """Creates dirname if it is missing."""
+    if not os.path.exists(dirname):
+        try:
+            os.makedirs(dirname)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
