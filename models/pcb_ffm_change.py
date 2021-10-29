@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torch.nn.modules.conv import Conv1d
 from .backbones.resnet50 import resnet50
 import torch.nn.functional as F
 from .model_utils.init_param import weights_init_classifier, weights_init_kaiming
@@ -32,11 +33,14 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
         x = self.resnet_layer1(x)
+        layer1 = x
         x = self.resnet_layer2(x)
+        layer2 = x
         x = self.resnet_layer3(x)
+        layer3 = x
         x = self.resnet_layer4(x)
 
-        return x
+        return x, layer1, layer2, layer3
 
 
 class Feature_Fusion_Module(nn.Module):
@@ -139,9 +143,23 @@ class pcb_ffm_change(nn.Module):
             self.local_conv_list.append(local_conv)
 
         # bilstm --------------------------------------------------------------------------
+        # self.bilstm_avgpool1 = nn.AdaptiveAvgPool2d((1, 1))
+        # self.bilstm_avgpool2 = nn.AdaptiveAvgPool2d((1, 1))
+        # self.bilstm_avgpool3 = nn.AdaptiveAvgPool2d((1, 1))
+        # self.bilstm_avgpool4 = nn.AdaptiveAvgPool2d((1, 1))
+        self.bilstm_preprocessed1 = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)))
+        self.bilstm_preprocessed2 = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(512, 256, kernel_size=1)
+        )
+        self.bilstm_preprocessed3 = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(1024, 256, kernel_size=1)
+        )
+        self.bilstm_preprocessed4 = nn.Sequential(
+            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(2048, 256, kernel_size=1)
+        )
         self.bilstm = nn.LSTM(256, 128, bidirectional=True)
         self.bilstm_classifier_list = nn.ModuleList()
-        for _ in range(self.parts):
+        for _ in range(4):
             fc = nn.Linear(256, num_classes)
             nn.init.normal_(fc.weight, std=0.001)
             nn.init.constant_(fc.bias, 0)
@@ -166,7 +184,7 @@ class pcb_ffm_change(nn.Module):
 
         ######################################################################################################################
         # backbone(Tensor T) --------------------------------------------------------------------------
-        resnet_features = self.backbone(x)  # ([N, 2048, 24, 8])
+        resnet_features, layer1, layer2, layer3 = self.backbone(x)  # ([N, 2048, 24, 8])
 
         # gloab([N, 512]) --------------------------------------------------------------------------
         gloab_features = self.k11_conv(resnet_features)
@@ -184,7 +202,16 @@ class pcb_ffm_change(nn.Module):
             features_H.append(stripe_features_H)
 
         # bilstm --------------------------------------------------------------------------
-        features_bilstm = torch.stack(features_H, 0)
+
+        features_bilstm = torch.stack(
+            [
+                self.bilstm_preprocessed1(layer1),
+                self.bilstm_preprocessed2(layer2),
+                self.bilstm_preprocessed3(layer3),
+                self.bilstm_preprocessed4(resnet_features),
+            ],
+            0,
+        )
         features_bilstm = features_bilstm.squeeze()
         features_bilstm, (_, _) = self.bilstm(features_bilstm)
 
@@ -209,7 +236,7 @@ class pcb_ffm_change(nn.Module):
         # classifier(fusion feature)--------------------------------------------------------------------------
         lstm_score_list = [
             self.bilstm_classifier_list[i](features_bilstm[i].view(batch_size, -1))
-            for i in range(self.parts)
+            for i in range(len(features_bilstm))
         ]  # shape list（[N, C=num_classes]）
 
         return parts_score_list, gloab_features, fusion_feature, lstm_score_list
