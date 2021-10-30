@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.nn.modules.conv import Conv1d
 from .backbones.resnet50 import resnet50
 import torch.nn.functional as F
 from .model_utils.init_param import weights_init_classifier, weights_init_kaiming
@@ -33,18 +32,15 @@ class Resnet_Backbone(nn.Module):
         x = self.resnet_relu(x)
         x = self.resnet_maxpool(x)
         x = self.resnet_layer1(x)
-        layer1 = x
         x = self.resnet_layer2(x)
-        layer2 = x
         x = self.resnet_layer3(x)
-        layer3 = x
         x = self.resnet_layer4(x)
 
-        return x, layer1, layer2, layer3
+        return x
 
 
 class Feature_Fusion_Module(nn.Module):
-    # 自定义特征融合模块
+    # 鑷畾涔夌壒寰佽瀺鍚堟ā鍧�
     def __init__(self, parts, **kwargs):
         super(Feature_Fusion_Module, self).__init__()
 
@@ -73,7 +69,7 @@ class Feature_Fusion_Module(nn.Module):
 
 
 def custom_RGA_Module():
-    # 自定义 RGA 模块
+    # 鑷畾涔� RGA 妯″潡
     branch_name = "rgas"
     if "rgasc" in branch_name:
         spa_on = True
@@ -131,7 +127,7 @@ class pcb_ffm_change(nn.Module):
         self.rga_att = custom_RGA_Module()
 
         ########################################################################################################
-        # part(pcb）--------------------------------------------------------------------------
+        # part(pcb锛�--------------------------------------------------------------------------
         self.avgpool = nn.AdaptiveAvgPool2d((self.parts, 1))
         self.local_conv_list = nn.ModuleList()
         for _ in range(self.parts):
@@ -143,29 +139,15 @@ class pcb_ffm_change(nn.Module):
             self.local_conv_list.append(local_conv)
 
         # bilstm --------------------------------------------------------------------------
-        # self.bilstm_avgpool1 = nn.AdaptiveAvgPool2d((1, 1))
-        # self.bilstm_avgpool2 = nn.AdaptiveAvgPool2d((1, 1))
-        # self.bilstm_avgpool3 = nn.AdaptiveAvgPool2d((1, 1))
-        # self.bilstm_avgpool4 = nn.AdaptiveAvgPool2d((1, 1))
-        self.bilstm_preprocessed1 = nn.Sequential(nn.AdaptiveAvgPool2d((1, 1)))
-        self.bilstm_preprocessed2 = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(512, 256, kernel_size=1)
-        )
-        self.bilstm_preprocessed3 = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(1024, 256, kernel_size=1)
-        )
-        self.bilstm_preprocessed4 = nn.Sequential(
-            nn.AdaptiveAvgPool2d((1, 1)), nn.Conv2d(2048, 256, kernel_size=1)
-        )
         self.bilstm = nn.LSTM(256, 128, bidirectional=True)
         self.bilstm_classifier_list = nn.ModuleList()
-        for _ in range(4):
+        for _ in range(self.parts):
             fc = nn.Linear(256, num_classes)
             nn.init.normal_(fc.weight, std=0.001)
             nn.init.constant_(fc.bias, 0)
             self.bilstm_classifier_list.append(fc)
 
-        # Classifier for each stripe （parts feature）-------------------------------------
+        # Classifier for each stripe 锛坧arts feature锛�-------------------------------------
         self.parts_classifier_list = nn.ModuleList()
         for _ in range(self.parts):
             fc = nn.Linear(256, num_classes)
@@ -174,7 +156,7 @@ class pcb_ffm_change(nn.Module):
             self.parts_classifier_list.append(fc)
 
         ########################################################################################################
-        # fusion_feature_classifier（fusion feature）--------------------------------------------------------------------------
+        # fusion_feature_classifier锛坒usion feature锛�--------------------------------------------------------------------------
         self.fusion_feature_classifier = nn.Linear(256, num_classes)
         nn.init.normal_(self.fusion_feature_classifier.weight, std=0.001)
         nn.init.constant_(self.fusion_feature_classifier.bias, 0)
@@ -184,7 +166,7 @@ class pcb_ffm_change(nn.Module):
 
         ######################################################################################################################
         # backbone(Tensor T) --------------------------------------------------------------------------
-        resnet_features, layer1, layer2, layer3 = self.backbone(x)  # ([N, 2048, 24, 8])
+        resnet_features = self.backbone(x)  # ([N, 2048, 24, 8])
 
         # gloab([N, 512]) --------------------------------------------------------------------------
         gloab_features = self.k11_conv(resnet_features)
@@ -202,16 +184,7 @@ class pcb_ffm_change(nn.Module):
             features_H.append(stripe_features_H)
 
         # bilstm --------------------------------------------------------------------------
-
-        features_bilstm = torch.stack(
-            [
-                self.bilstm_preprocessed1(layer1),
-                self.bilstm_preprocessed2(layer2),
-                self.bilstm_preprocessed3(layer3),
-                self.bilstm_preprocessed4(resnet_features),
-            ],
-            0,
-        )
+        features_bilstm = torch.stack(features_H, 0)
         features_bilstm = features_bilstm.squeeze()
         features_bilstm, (_, _) = self.bilstm(features_bilstm)
 
@@ -231,12 +204,12 @@ class pcb_ffm_change(nn.Module):
         parts_score_list = [
             self.parts_classifier_list[i](features_H[i].view(batch_size, -1))
             for i in range(self.parts)
-        ]  # shape list（[N, C=num_classes]）
+        ]  # shape list锛圼N, C=num_classes]锛�
 
         # classifier(fusion feature)--------------------------------------------------------------------------
         lstm_score_list = [
             self.bilstm_classifier_list[i](features_bilstm[i].view(batch_size, -1))
-            for i in range(len(features_bilstm))
-        ]  # shape list（[N, C=num_classes]）
+            for i in range(self.parts)
+        ]  # shape list锛圼N, C=num_classes]锛�
 
         return parts_score_list, gloab_features, fusion_feature, lstm_score_list
